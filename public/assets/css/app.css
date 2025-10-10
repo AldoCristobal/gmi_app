@@ -1,0 +1,365 @@
+/* ============================
+   Login centrado
+   ============================ */
+.login-page {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   height: 100vh;
+   /* ocupa toda la altura de la ventana */
+   background-color: #1e1e2f;
+   /* fondo oscuro sobrio */
+}
+
+.login-box {
+   margin: 0;
+   /* elimina margen superior de AdminLTE */
+   width: 360px;
+   /* ancho fijo agradable */
+}
+
+/* ============================
+   Loader overlay global
+   ============================ */
+.loader-overlay {
+   position: fixed;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+   background: rgba(0, 0, 0, 0.6);
+   z-index: 1050;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   flex-direction: column;
+}
+
+.loader-overlay .spinner {
+   border: 4px solid rgba(255, 255, 255, 0.2);
+   border-left-color: #00c0ef;
+   /* azul AdminLTE */
+   border-radius: 50%;
+   width: 48px;
+   height: 48px;
+   animation: spin 1s linear infinite;
+   margin-bottom: 10px;
+}
+
+.loader-overlay .loader-text {
+   color: #fff;
+   font-size: 14px;
+}
+
+@keyframes spin {
+   to {
+      transform: rotate(360deg);
+   }
+}
+
+/* Ocultar overlay por defecto */
+.d-none {
+   display: none !important;
+}
+
+/* ============================
+   AG Grid ajustes
+   ============================ */
+.ag-theme-alpine-dark {
+   font-size: 13px;
+   /* más compacto */
+   border-radius: 6px;
+}
+
+.ag-theme-alpine-dark .ag-header-cell {
+   background-color: #2b2b3c;
+   color: #e0e0e0;
+}
+
+.ag-theme-alpine-dark .ag-row-hover {
+   background-color: rgba(0, 192, 239, 0.15) !important;
+   /* highlight con color corporativo */
+}
+
+/* altura y scroll del árbol */
+#rp-tree .fancytree-container {
+   max-height: 420px;
+   /* ajusta a tu gusto */
+   overflow-y: auto;
+   overscroll-behavior: contain;
+   /* evita que se vaya al body */
+   scrollbar-gutter: stable;
+   /* opcional: evita saltos de layout */
+}
+
+/* ===== FancyTree Dark Fixes (scope: .ft-dark) ===== */
+.ft-dark .fancytree-container {
+   background: transparent !important;
+   color: #e5e7eb !important;
+   /* slate-200 */
+   border: 0 !important;
+}
+
+/* Título del nodo (texto) */
+.ft-dark .fancytree-title,
+.ft-dark a.fancytree-title {
+   color: #e5e7eb !important;
+}
+
+/* Hover fila: fondo semitransparente + texto claro */
+.ft-dark .fancytree-node:hover>.fancytree-title,
+.ft-dark .ui-state-hover>.fancytree-title {
+   background: rgba(148, 163, 184, 0.15) !important;
+   /* slate-400/15% */
+   color: #f8fafc !important;
+   /* slate-50 */
+}
+
+/* Focus/active (teclado o click) – quita el blanco */
+.ft-dark .ui-state-focus>.fancytree-title,
+.ft-dark .fancytree-active>.fancytree-title {
+   background: rgba(59, 130, 246, 0.18) !important;
+   /* blue-500/18% */
+   color: #f8fafc !important;
+   outline: 1px solid rgba(59, 130, 246, .5) !important;
+   outline-offset: 0;
+}
+
+/* Seleccionado (checkbox marcado) – NO fondo blanco */
+.ft-dark .fancytree-selected>.fancytree-title,
+.ft-dark .fancytree-partsel>.fancytree-title {
+   background: rgba(34, 197, 94, 0.22) !important;
+   /* green-500/22% */
+   color: #ecfdf5 !important;
+   /* emerald-50 */
+   border-radius: 4px;
+}
+
+/* Resaltado de búsqueda (ext. filter) */
+.ft-dark .fancytree-match {
+   background: rgba(250, 204, 21, .28) !important;
+   /* amber-400 */
+   color: #111827 !important;
+   /* gray-900 para contraste */
+   border-radius: 3px;
+}
+
+/* Evita que jQuery UI pinte blancos genéricos dentro del árbol */
+.ft-dark .ui-state-hover,
+.ft-dark .ui-state-active,
+.ft-dark .ui-widget-content .ui-state-active,
+.ft-dark .ui-widget-header .ui-state-active {
+   background: transparent !important;
+   border-color: transparent !important;
+   color: inherit !important;
+}
+
+/* Expanders e íconos con mejor visibilidad */
+.ft-dark .fancytree-expander,
+.ft-dark .fancytree-icon {
+   opacity: .9;
+}
+
+/* Scroll vertical sólo dentro del árbol (y sin “arrastrar” el body) */
+.ft-dark .fancytree-container {
+   max-height: 420px;
+   /* ajusta a tu gusto */
+   overflow-y: auto;
+   overscroll-behavior: contain;
+   scrollbar-gutter: stable;
+}
+
+/* Fondo y color del contenedor (sirve si es <ul> o <div>) */
+.tree-dark .fancytree-container {
+   background-color: #343a40 !important;
+   border: 1px solid #1f2937 !important;
+   color: #e5e7eb !important;
+   border-radius: 8px;
+}
+
+/* (extra) por si el skin aplica fondo al wrapper */
+.tree-dark .ui-fancytree {
+   background-color: #343a40 !important;
+}
+
+/* Títulos/hover/active ya te funcionaban, los dejo por si acaso */
+.tree-dark .fancytree-title {
+   color: #e5e7eb !important;
+   background: transparent !important;
+}
+
+.tree-dark .fancytree-node:hover>.fancytree-title {
+   background: rgba(255, 255, 255, .06) !important;
+   color: #fff !important;
+}
+
+.tree-dark .fancytree-active>.fancytree-title {
+   background: rgba(59, 130, 246, .20) !important;
+   box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .35) !important;
+   color: #fff !important;
+}
+
+.tree-dark .fancytree-title .fancytree-highlight {
+   color: #fde047 !important;
+   background: transparent !important;
+   font-weight: 700 !important;
+}
+
+
+
+/* Micro-ajustes tipográficos opcionales */
+.ft-dark .perm-item .desc {
+   margin-right: .35rem;
+}
+
+.ft-dark .perm-item .key {
+   opacity: .75;
+   font-size: .9em;
+}
+
+/* Botones de permisos minimalistas */
+#roles-page .card-header .btn {
+   padding: .25rem .5rem;
+   line-height: 1;
+   border-radius: 6px;
+}
+
+#roles-page .card-header .btn i {
+   font-size: 1rem;
+   vertical-align: middle;
+}
+
+/* Estado hover/focus más discreto */
+#roles-page .card-header .btn:hover {
+   opacity: 0.85;
+}
+
+/* Estado "busy" (deshabilitar interacciones del árbol durante guardado/carga) */
+.ft-busy {
+   pointer-events: none;
+   opacity: .6;
+   filter: grayscale(25%)
+}
+
+/* Nodos bloqueados por wildcard (añadimos class wc-lock al span del nodo) */
+#rp-tree .wc-lock .fancytree-title {
+   opacity: .55;
+   text-decoration: none;
+}
+
+/* Bloquea interacción y baja opacidad cuando el árbol está ocupado */
+#rp-tree .fancytree-container.ft-busy {
+   pointer-events: none;
+   opacity: .55;
+   filter: grayscale(30%);
+   transition: opacity .15s ease;
+}
+
+
+/* ===== Toolbar “como AG Grid” ===== */
+.ag-toolbar {
+   /* hereda colores del tema AG */
+   background: var(--ag-background-color, #1f1f1f);
+   color: var(--ag-foreground-color, #e5e7eb);
+   border: 1px solid var(--ag-border-color, #2d2f33);
+   border-bottom: none;
+   /* se une visualmente con el header del grid */
+   border-radius: 6px 6px 0 0;
+   padding: 6px 8px;
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 8px;
+
+   /* que quede pegajosa si hay scroll */
+   position: sticky;
+   top: 0;
+   z-index: 3;
+   /* por encima del header del grid */
+}
+
+.ag-toolbar+.ag-theme-alpine-dark,
+.ag-toolbar+.ag-theme-alpine {
+   border-top-left-radius: 0;
+   border-top-right-radius: 0;
+}
+
+/* Layout interno */
+.ag-toolbar__left,
+.ag-toolbar__right {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+}
+
+/* ===== Botones minimalistas ===== */
+.ag-btn {
+   --btn-bg: transparent;
+   --btn-fg: var(--ag-foreground-color, #e5e7eb);
+   --btn-border: var(--ag-border-color, #2d2f33);
+   --btn-hover: rgba(255, 255, 255, 0.06);
+   --btn-active: rgba(255, 255, 255, 0.12);
+
+   display: inline-flex;
+   align-items: center;
+   gap: 8px;
+   padding: 6px 10px;
+   font-size: 13px;
+   line-height: 1;
+   background: var(--btn-bg);
+   color: var(--btn-fg);
+   border: 1px solid var(--btn-border);
+   border-radius: 8px;
+   transition: background .15s ease, border-color .15s ease, transform .05s ease;
+}
+
+.ag-btn i {
+   font-size: 12px;
+   opacity: .9;
+}
+
+.ag-btn span {
+   letter-spacing: .1px;
+}
+
+.ag-btn:hover {
+   background: var(--btn-hover);
+}
+
+.ag-btn:active {
+   background: var(--btn-active);
+   transform: translateY(0.5px);
+}
+
+.ag-btn:disabled {
+   opacity: .5;
+   cursor: not-allowed;
+}
+
+/* Variantes corporativas */
+.ag-btn--primary {
+   --btn-border: #3b82f6;
+   box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .25);
+}
+
+.ag-btn--warning {
+   --btn-border: #f59e0b;
+   box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .25);
+}
+
+.ag-btn--danger {
+   --btn-border: #ef4444;
+   box-shadow: inset 0 0 0 1px rgba(239, 68, 68, .25);
+}
+
+/* Compacto en pantallas chicas */
+@media (max-width: 768px) {
+   .ag-btn span {
+      display: none;
+   }
+
+   /* deja solo iconos */
+   .ag-btn {
+      padding: 6px 8px;
+   }
+}

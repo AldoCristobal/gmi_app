@@ -1,0 +1,362 @@
+<?php
+
+
+use App\Controllers\AuthController;
+use App\Controllers\MenuController;
+use App\Controllers\RoleController;
+use App\Controllers\UserController;
+use App\Controllers\EmpresaController;
+use App\Controllers\CatalogosController;
+use App\Controllers\PermisoController;
+use App\Controllers\EmpresaObligacionController;
+
+
+use App\Http\Middlewares\AuthMiddleware;
+use App\Http\Middlewares\CsrfMiddleware;
+use App\Http\Middlewares\RbacMiddleware;
+use App\Http\Middlewares\ScopeMiddleware;
+
+$auth = new AuthController();
+$emp = new EmpresaController();
+$usr = new UserController();
+$rol = new RoleController();
+$per = new PermisoController();
+$men = new MenuController();
+$cat = new CatalogosController();
+$empObl = new EmpresaObligacionController();
+
+
+// Login (NO Auth, NO CSRF)
+$router->post('/api/login', [$auth, 'login']);
+
+// Logout (requiere sesión; si quieres puedes dejarlo sin CSRF)
+$router->post('/api/logout', [$auth, 'logout']);
+
+// Obtener token CSRF (libre)
+$router->get('/api/csrf', [$auth, 'csrf']);
+
+
+
+$router->get('/api/v1/catalogos/areas', [new AuthMiddleware(), [$cat, 'areas']]);
+$router->get('/api/v1/catalogos/jefes', [new AuthMiddleware(), [$cat, 'jefes']]);
+$router->get('/api/v1/catalogos/roles', [new AuthMiddleware(), [$cat, 'roles']]);
+
+$router->get('/api/v1/auth/whoami', [
+   new AuthMiddleware(),
+   [new \App\Controllers\AuthController(), 'whoami']
+]);
+
+/** USUARIOS */
+$router->get('/api/v1/admin/usuarios', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['admin.usuarios.ver']),
+   [$usr, 'index']
+]);
+$router->post('/api/v1/admin/usuarios', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.usuarios.crear']),
+   [$usr, 'store']
+]);
+$router->put('/api/v1/admin/usuarios', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.usuarios.editar']),
+   [$usr, 'update']
+]);
+$router->patch('/api/v1/admin/usuarios/password', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.usuarios.editar']),
+   [$usr, 'resetPassword']
+]);
+$router->delete('/api/v1/admin/usuarios', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.usuarios.borrar']),
+   [$usr, 'destroy']
+]);
+
+/** ROLES */
+
+// GET /api/v1/admin/roles/permisos?id=123
+$router->get('/api/v1/admin/roles/permisos', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['admin.roles.permisos']),
+   [$rol, 'permisos']
+]);
+
+// PATCH /api/v1/admin/roles/permisos   body: { role_id, permisos: string[] }
+$router->patch('/api/v1/admin/roles/permisos', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.roles.permisos']),
+   [$rol, 'savePermisos']
+]);
+
+$router->get('/api/v1/admin/roles', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['admin.roles.ver']),
+   [$rol, 'index']
+]);
+
+$router->post('/api/v1/admin/roles', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.roles.crear']),
+   [$rol, 'store']
+]);
+
+// Después (sin path param)
+$router->put('/api/v1/admin/roles', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.roles.editar']),
+   [$rol, 'update']
+]);
+
+// Recomiendo también unificar DELETE a query (?id=...)
+$router->delete('/api/v1/admin/roles', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.roles.borrar']),
+   [$rol, 'destroy']
+]);
+
+// Permisos de un rol (por CLAVE)
+$router->get('/api/v1/admin/roles/{id:\d+}/permisos', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['admin.roles.permisos']),
+   [$rol, 'permisos']           // <-- Nombre del método en RoleController
+]);
+
+$router->patch('/api/v1/admin/roles/{id:\d+}/permisos', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.roles.permisos']),
+   [$rol, 'savePermisos']       // <-- Nombre del método en RoleController
+]);
+
+
+/** PERMISOS */
+$router->get('/api/v1/admin/permisos', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['admin.roles.permisos']),  // <- ya se lo diste a Gerencia
+   [$per, 'index']
+]);
+
+$router->post('/api/v1/admin/permisos', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.permisos.crear']),
+   [$per, 'store']
+]);
+
+$router->put('/api/v1/admin/permisos/{id:\d+}', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.permisos.editar']),
+   [$per, 'update']
+]);
+
+$router->delete('/api/v1/admin/permisos/{id:\d+}', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.permisos.borrar']),
+   [$per, 'destroy']
+]);
+
+
+/** MENÚ */
+$router->get('/api/v1/admin/menu', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['admin.menu.ver']),
+   [$men, 'index']
+]);
+$router->post('/api/v1/admin/menu', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.menu.crear']),
+   [$men, 'store']
+]);
+$router->put('/api/v1/admin/menu', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.menu.editar']),
+   [$men, 'update']
+]);
+$router->delete('/api/v1/admin/menu', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.menu.borrar']),
+   [$men, 'destroy']
+]);
+$router->post('/api/v1/admin/menu/roles', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.menu.roles']),
+   [$men, 'setRoles']
+]);
+// PATCH /api/v1/admin/menu/reorder
+$router->patch('/api/v1/admin/menu/reorder', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.menu.reordenar']),
+   [$men, 'reorder']
+]);
+
+/** Árbol de menú del usuario vigente (para el sidebar) */
+$router->get('/api/v1/menu/tree', [
+   new AuthMiddleware(),
+   [$men, 'myTree']
+]);
+
+
+/** Listar empresas */
+$router->get('/api/v1/empresas', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['empresa.ver']),
+   new ScopeMiddleware(),
+   [$emp, 'index']
+]);
+
+/** Ver una empresa (por id en query: ?id=123) */
+$router->get('/api/v1/empresas/show', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['empresa.ver']),
+   new ScopeMiddleware(),
+   [$emp, 'show']
+]);
+
+/** Crear empresa */
+$router->post('/api/v1/empresas', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.crear']),
+   new ScopeMiddleware(),
+   [$emp, 'store']
+]);
+
+/** Actualizar empresa */
+$router->put('/api/v1/empresas', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.editar']),
+   new ScopeMiddleware(),
+   [$emp, 'update']
+]);
+
+/** Eliminar (baja lógica) */
+$router->delete('/api/v1/empresas', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.borrar']),
+   new ScopeMiddleware(),
+   [$emp, 'destroy']
+]);
+
+
+/** EXPEDIENTE */
+$router->get('/api/v1/empresas/expediente', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['empresa.expediente']),
+   new ScopeMiddleware(),
+   [$emp, 'expedienteList']
+]);
+
+$router->post('/api/v1/empresas/expediente', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.expediente']),
+   new ScopeMiddleware(),
+   [$emp, 'expedienteUpload']
+]);
+
+// (Opcional, paso 3): versiones por tipo
+$router->get('/api/v1/empresas/expediente/versions', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['empresa.expediente']),
+   new ScopeMiddleware(),
+   [$emp, 'expedienteVersions']
+]);
+
+// (Opcional, paso 3): download (devuelve path relativo)
+$router->get('/api/v1/empresas/expediente/download', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['empresa.expediente']),
+   new ScopeMiddleware(),
+   [$emp, 'expedienteDownload']
+]);
+
+
+/** CIF */
+$router->post('/api/v1/empresas/cif/upload', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.cif']),
+   new ScopeMiddleware(),
+   [$emp, 'cifUpload']
+]);
+
+$router->post('/api/v1/empresas/cif/parse', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.cif']),
+   new ScopeMiddleware(),
+   [$emp, 'cifParse']
+]);
+
+$router->post('/api/v1/empresas/cif/apply', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.cif']),
+   new ScopeMiddleware(),
+   [$emp, 'cifApply']
+]);
+
+$router->get('/api/v1/catalogos/empresa_documento_tipos', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   [$cat, 'empresaDocumentoTipos']
+]);
+
+// ===== CATALOGO OBLIGACIONES =====
+// Catálogo de obligaciones
+$router->get('/api/v1/catalogos/obligaciones', [
+   new AuthMiddleware(),
+   [$cat, 'obligaciones']
+]);
+
+// Obligaciones por empresa (index)
+$router->get('/api/v1/empresas/obligaciones', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['empresa.obligacion.ver']),
+   new ScopeMiddleware(),
+   [$empObl, 'index']
+]);
+
+// Asignar
+$router->post('/api/v1/empresas/obligaciones', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.obligacion.asignar']),
+   new ScopeMiddleware(),
+   [$empObl, 'store']
+]);
+
+// Editar
+$router->put('/api/v1/empresas/obligaciones', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.obligacion.editar']),
+   new ScopeMiddleware(),
+   [$empObl, 'update']
+]);
+
+// Quitar (desasignar)
+$router->delete('/api/v1/empresas/obligaciones', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.obligacion.borrar']),
+   new ScopeMiddleware(),
+   [$empObl, 'destroy']
+]);
