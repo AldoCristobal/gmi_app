@@ -101,3 +101,47 @@ $router->get('/empresas/expediente', [
       \App\Http\Response::html($html);
    }
 ]);
+
+// Módulo Revisiones (fuera de /admin)
+$router->get('/revisiones', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   new \App\Http\Middlewares\RbacMiddleware(['revisiones.ver']),
+   function ($req) {
+      // --- CSRF: asegura token en sesión (igual que en /empresas)
+      if (session_status() !== PHP_SESSION_ACTIVE) {
+         \App\Security\Session::start();
+      }
+      if (empty($_SESSION['csrf_token'])) {
+         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      }
+
+      $html = \App\Support\View::render('revisiones/index', [
+         'title'     => 'Revisiones',
+         'script'    => 'revisiones.index.js', // /public/assets/js/revisiones.index.js
+         'csrfToken' => $_SESSION['csrf_token'],
+      ]);
+      \App\Http\Response::html($html);
+   }
+]);
+
+
+// Historial de Revisiones (solo lectura)
+$router->get('/revisiones/historial', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   new \App\Http\Middlewares\RbacMiddleware(['revisiones.historial.ver']),
+   function ($req) {
+      // Asegura CSRF en la vista
+      if (session_status() !== PHP_SESSION_ACTIVE) {
+         App\Security\Session::start();
+      }
+      if (empty($_SESSION['csrf_token'])) {
+         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      }
+      $html = \App\Support\View::render('revisiones/historial', [
+         'title'     => 'Historial de Revisiones',
+         'script'    => 'revisiones.historial.js',
+         'csrfToken' => $_SESSION['csrf_token'],
+      ]);
+      \App\Http\Response::html($html);
+   }
+]);

@@ -1,9 +1,9 @@
 // public/assets/js/empresas.index.js
 (function () {
-   const USE_DETAIL_FALLBACK = true;
+   var USE_DETAIL_FALLBACK = true;
 
    // ===== Notificaciones (Notyf) =====
-   let _notyf = null;
+   var _notyf = null;
    try {
       _notyf = new Notyf({
          duration: 3000,
@@ -14,76 +14,96 @@
             { type: 'info', background: '#3B82F6', icon: false },
             { type: 'warning', background: '#F59E0B', icon: false },
             { type: 'success', background: '#10B981', icon: false },
-            { type: 'error', background: '#EF4444', icon: false },
-         ],
+            { type: 'error', background: '#EF4444', icon: false }
+         ]
       });
    } catch (e) {
       console.warn('Notyf no encontrado; se usarán logs de consola.');
    }
-   const toast = (type, message) => {
-      if (_notyf) _notyf.open({ type, message });
-      else console[type === 'error' ? 'error' : 'log'](message);
-   };
-   // Exponer toast para otros módulos
+   function toast(type, message) {
+      if (_notyf) _notyf.open({ type: type, message: message });
+      else (type === 'error' ? console.error : console.log)(message);
+   }
    window.__emp_toast = toast;
 
-   function handleApiError(err, fallbackMsg = 'Error al procesar la solicitud') {
+   function canPerm(p) {
+      return (typeof window !== 'undefined' && typeof window.__canPerm === 'function')
+         ? window.__canPerm(p)
+         : false;
+   }
+
+   function handleApiError(err, fallbackMsg) {
+      if (!fallbackMsg) fallbackMsg = 'Error al procesar la solicitud';
       console.error(err);
-      const status = err?.status ?? err?.code;
+      var status = (err && (err.status || err.code)) || null;
       if (status === 401) toast('warning', 'Sesión expirada o no autenticado (401).');
       else if (status === 403 || status === 'FORBIDDEN') {
-         const missing = err?.payload?.error?.message || '';
-         toast('error', `No cuentas con permisos (403). ${missing}`);
+         var missing = (err && err.payload && err.payload.error && err.payload.error.message) ? err.payload.error.message : '';
+         toast('error', 'No cuentas con permisos (403). ' + missing);
       } else if (status === 404) toast('warning', 'Recurso no encontrado (404).');
       else if (status === 409) toast('warning', 'Conflicto de datos (409).');
       else if (status === 422) toast('warning', 'Datos inválidos o incompletos (422).');
-      else toast('error', `${fallbackMsg}${err?.message ? `: ${err.message}` : ''}`);
+      else {
+         var extra = (err && err.message) ? (': ' + err.message) : '';
+         toast('error', fallbackMsg + extra);
+      }
    }
 
    // --- CSRF helpers ---
    function readCookie(name) {
-      const cookies = document.cookie ? document.cookie.split('; ') : [];
-      for (const c of cookies) {
-         const idx = c.indexOf('=');
-         const key = idx > -1 ? c.substring(0, idx) : c;
+      var cookies = document.cookie ? document.cookie.split('; ') : [];
+      for (var i = 0; i < cookies.length; i++) {
+         var c = cookies[i];
+         var idx = c.indexOf('=');
+         var key = idx > -1 ? c.substring(0, idx) : c;
          if (key === name) {
-            const val = idx > -1 ? c.substring(idx + 1) : '';
-            try { return decodeURIComponent(val); } catch { return val; }
+            var val = idx > -1 ? c.substring(idx + 1) : '';
+            try { return decodeURIComponent(val); } catch (e) { return val; }
          }
       }
       return '';
    }
    function getMetaCsrf() {
-      const meta = document.querySelector('meta[name="csrf-token"]');
+      var meta = document.querySelector('meta[name="csrf-token"]');
       return (meta && meta.content) ? meta.content : '';
    }
-   async function getCsrf() {
-      const meta = getMetaCsrf();
-      if (meta) return { token: meta, source: 'meta' };
+   function getCsrf() {
+      return new Promise(function (resolve) {
+         var meta = getMetaCsrf();
+         if (meta) return resolve({ token: meta, source: 'meta' });
 
-      const ls = localStorage.getItem('csrf_token');
-      if (ls) return { token: ls, source: 'localStorage' };
+         var ls = localStorage.getItem('csrf_token');
+         if (ls) return resolve({ token: ls, source: 'localStorage' });
 
-      try {
-         const r = await fetch('/api/csrf', { credentials: 'same-origin' });
-         if (r.ok) {
-            const j = await r.json().catch(() => ({}));
-            const token = j?.csrf || j?.token || j?.data || '';
-            if (token) return { token, source: 'api' };
+         function trySanctum() {
+            try {
+               fetch('/sanctum/csrf-cookie', { credentials: 'same-origin' })
+                  .then(function (r) {
+                     if (!r.ok) return resolve({ token: '', source: 'none' });
+                     var cookieToken = readCookie('XSRF-TOKEN');
+                     if (cookieToken) return resolve({ token: cookieToken, source: 'cookie' });
+                     resolve({ token: '', source: 'none' });
+                  })
+                  .catch(function () { resolve({ token: '', source: 'none' }); });
+            } catch (e) { resolve({ token: '', source: 'none' }); }
          }
-      } catch { }
 
-      try {
-         const r = await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin' });
-         if (r.ok) {
-            const cookieToken = readCookie('XSRF-TOKEN');
-            if (cookieToken) return { token: cookieToken, source: 'cookie' };
-         }
-      } catch { }
-      return { token: '', source: 'none' };
+         try {
+            fetch('/api/csrf', { credentials: 'same-origin' })
+               .then(function (r) {
+                  if (!r.ok) return trySanctum();
+                  r.json().then(function (j) {
+                     var token = (j && (j.csrf || j.token || j.data)) || '';
+                     if (token) return resolve({ token: token, source: 'api' });
+                     trySanctum();
+                  }).catch(trySanctum);
+               })
+               .catch(trySanctum);
+         } catch (e) { trySanctum(); }
+      });
    }
    function buildCsrfHeaders(csrf) {
-      if (!csrf?.token) return {};
+      if (!csrf || !csrf.token) return {};
       return { 'X-CSRF-Token': csrf.token };
    }
 
@@ -91,158 +111,382 @@
       if (typeof Api === 'undefined') { console.error('Api.js no cargado'); return; }
       if (typeof agGrid === 'undefined') { console.error('AG Grid no cargado'); return; }
 
-      // ---- Helpers DOM ----
-      const $ = (sel, ctx = document) => ctx.querySelector(sel);
-      const setEnabled = (el, enabled) => {
+      // Helpers DOM
+      function $(sel, ctx) { return (ctx || document).querySelector(sel); }
+      function setEnabled(el, enabled) {
          if (!el) return;
          el.disabled = !enabled;
          el.classList.toggle('disabled', !enabled);
          if (enabled) el.removeAttribute('aria-disabled');
          else el.setAttribute('aria-disabled', 'true');
-      };
+      }
 
       // ---- Controles / Contenedores ----
-      const gridEl = $('#gridEmpresas');
-      const fQ = $('#emp-f-q');
-      const fArea = $('#emp-f-area');
-      const fActivo = $('#emp-f-activo');
+      var gridEl = $('#gridEmpresas');
+      var fQ = $('#emp-f-q');
+      var fArea = $('#emp-f-area');
+      var fActivo = $('#emp-f-activo');
 
-      const btnSearch = $('#emp-btn-search');
-      const btnNew = $('#emp-btn-new');
-      const btnEdit = $('#emp-btn-edit');
-      const btnDelete = $('#emp-btn-delete');
-      const btnExp = $('#emp-btn-expediente');
-      const btnObl = $('#emp-btn-oblig'); // botón de Obligaciones (en toolbar)
+      var btnSearch = $('#emp-btn-search');
+      var btnNew = $('#emp-btn-new');
+      var btnEdit = $('#emp-btn-edit'); // puede no existir
+      var btnDelete = $('#emp-btn-delete');
+      var btnExp = $('#emp-btn-expediente');
+      var btnObl = $('#emp-btn-oblig');
 
       if (!gridEl) { console.error('Falta #gridEmpresas'); return; }
 
       // ---- Modal refs ----
-      const modalEl = $('#empresa-modal');
-      const modalTitle = $('#empresa-modal-title');
-      const btnSave = $('#emp-save');
+      var modalEl = $('#empresa-modal');
+      var modalTitle = $('#empresa-modal-title');
+      var btnSave = $('#emp-save');
 
-      const fId = $('#emp-id');
-      const fCli = $('#emp-cliente_grupo');
-      const fNom = $('#emp-nombre');
-      const fRfc = $('#emp-rfc');
-      const fTipo = $('#emp-tipo_persona');
-      const fAreaId = $('#emp-area_id');
-      const fRespId = $('#emp-responsable_id');
-      const fActv = $('#emp-activo');
+      var fId = $('#emp-id');
+      var fCli = $('#emp-cliente_grupo');
+      var fNom = $('#emp-nombre');
+      var fRfc = $('#emp-rfc');
+      var fTipo = $('#emp-tipo_persona');
+      var fAreaId = $('#emp-area_id');
+      var fRespId = $('#emp-responsable_id');
+      var fActv = $('#emp-activo');
 
-      const fCont = $('#emp-contrato_servicios');
-      const fNFac = $('#emp-nombre_facturacion');
-      const fTFact = $('#emp-telefono_facturacion');
-      const fCFact = $('#emp-correo_facturacion');
-      const fReg = $('#emp-tipo_regimen');
-      const fAct = $('#emp-actividad_principal');
-      const fEdoDom = $('#emp-estatus_domicilio');
+      var fCont = $('#emp-contrato_servicios');
+      var fNFac = $('#emp-nombre_facturacion');
+      var fTFact = $('#emp-telefono_facturacion');
+      var fCFact = $('#emp-correo_facturacion');
+      var fReg = $('#emp-tipo_regimen');
+      var fAct = $('#emp-actividad_principal');
+      var fEdoDom = $('#emp-estatus_domicilio');
 
-      // Modal Expediente refs
-      const modalExpEl = document.getElementById('expediente-modal');
-      const expEmpresaId = document.getElementById('exp-up-empresa_id');
-      const expEmpresaNm = document.getElementById('exp-up-empresa_name');
-      const expEmpresaTitle = document.getElementById('exp-empresa-title');
-      const expTipoSel = document.getElementById('exp-up-tipo_clave');
-      const expFilesInput = document.getElementById('exp-files-input');
-      const expFilesTbody = document.getElementById('exp-files-tbody');
-      const expLastWrap = document.getElementById('exp-last-list');
-      const expLastBody = document.getElementById('exp-last-tbody');
+      // Modal Expediente refs (restaurado)
+      var modalExpEl = document.getElementById('expediente-modal');
+      var expEmpresaId = document.getElementById('exp-up-empresa_id');
+      var expEmpresaNm = document.getElementById('exp-up-empresa_name');
+      var expEmpresaTitle = document.getElementById('exp-empresa-title');
+      var expTipoSel = document.getElementById('exp-up-tipo_clave');
+      var expFilesInput = document.getElementById('exp-files-input');
+      var expFilesTbody = document.getElementById('exp-files-tbody');
+      var expLastWrap = document.getElementById('exp-last-list');
+      var expLastBody = document.getElementById('exp-last-tbody');
 
-      let _tipos = []; // catálogo de tipos doc
-      const _tipoByClave = new Map();
+      var _tipos = []; // catálogo tipos documento
+      var _tipoByClave = new Map();
 
       // ---- Catálogos ----
-      let _areas = [], _jefes = [];
+      var _areas = [], _jefes = [];
 
-      function fillSelect(selectEl, items, valueField, labelField, { includeEmpty, emptyText } = {}) {
+      function fillSelect(selectEl, items, valueField, labelField, opts) {
+         opts = opts || {};
          if (!selectEl) return;
          selectEl.innerHTML = '';
-         if (includeEmpty) {
-            const opt = document.createElement('option');
-            opt.value = '';
-            opt.textContent = emptyText || 'Seleccione…';
-            selectEl.appendChild(opt);
+         if (opts.includeEmpty) {
+            var opt0 = document.createElement('option');
+            opt0.value = '';
+            opt0.textContent = opts.emptyText || 'Seleccione…';
+            selectEl.appendChild(opt0);
          }
-         for (const it of (items || [])) {
-            const opt = document.createElement('option');
-            opt.value = String(it[valueField] ?? '');
-            opt.textContent = String(it[labelField] ?? '');
+         var list = items || [];
+         for (var i = 0; i < list.length; i++) {
+            var it = list[i];
+            var opt = document.createElement('option');
+            opt.value = String((it && it[valueField]) != null ? it[valueField] : '');
+            opt.textContent = String((it && it[labelField]) != null ? it[labelField] : '');
             selectEl.appendChild(opt);
          }
       }
-      // Exponer helpers / catálogos para el módulo de Obligaciones
       window.__emp_fillSelect = fillSelect;
 
-      async function loadCatalogs() {
-         try {
-            AppLoader?.show('Cargando catálogos…');
-            const [jAreas, jJefes] = await Promise.all([
+      function loadCatalogs() {
+         return new Promise(function (resolve) {
+            try { if (window.AppLoader && AppLoader.show) AppLoader.show('Cargando catálogos…'); } catch (e) { }
+            Promise.all([
                Api.get('/api/v1/catalogos/areas'),
-               Api.get('/api/v1/catalogos/jefes'),
-            ]);
-            _areas = jAreas?.data || [];
-            _jefes = jJefes?.data || [];
+               Api.get('/api/v1/catalogos/jefes')
+            ]).then(function (arr) {
+               var jAreas = arr[0] || {};
+               var jJefes = arr[1] || {};
+               _areas = jAreas.data || [];
+               _jefes = jJefes.data || [];
 
-            // exponer global para Obligaciones
-            window.__emp_areas = _areas;
-            window.__emp_jefes = _jefes;
+               window.__emp_areas = _areas;
+               window.__emp_jefes = _jefes;
 
-            fillSelect(fArea, _areas, 'id', 'nombre', { includeEmpty: true, emptyText: 'Todas' });
-            fillSelect(fAreaId, _areas, 'id', 'nombre', { includeEmpty: true, emptyText: 'Seleccione…' });
-            fillSelect(fRespId, _jefes, 'id', 'nombre', { includeEmpty: true, emptyText: 'Seleccione…' });
-         } catch (err) {
-            handleApiError(err, 'No se pudieron cargar catálogos');
-         } finally {
-            AppLoader?.hide();
-         }
+               fillSelect(fArea, _areas, 'id', 'nombre', { includeEmpty: true, emptyText: 'Todas' });
+               fillSelect(fAreaId, _areas, 'id', 'nombre', { includeEmpty: true, emptyText: 'Seleccione…' });
+               fillSelect(fRespId, _jefes, 'id', 'nombre', { includeEmpty: true, emptyText: 'Seleccione…' });
+               resolve();
+            }).catch(function (err) {
+               handleApiError(err, 'No se pudieron cargar catálogos');
+               resolve();
+            }).finally(function () {
+               try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { }
+            });
+         });
       }
 
-      async function loadTiposDocumento() {
-         try {
-            const res = await Api.get('/api/v1/catalogos/empresa_documento_tipos');
-            _tipos = res?.data || [];
+      // === Expediente (solo restaurado) ===
+      function loadTiposDocumento() {
+         return Api.get('/api/v1/catalogos/empresa_documento_tipos').then(function (res) {
+            _tipos = (res && res.data) || [];
             _tipoByClave.clear();
             if (expTipoSel) expTipoSel.innerHTML = '<option value="">Seleccione…</option>';
-
-            for (const t of _tipos) {
-               const opt = document.createElement('option');
+            for (var i = 0; i < _tipos.length; i++) {
+               var t = _tipos[i];
+               var opt = document.createElement('option');
                opt.value = t.clave;
                opt.textContent = t.nombre;
                opt.dataset.id = t.id;
-               opt.dataset.maxMb = t.max_mb ?? '';
+               opt.dataset.maxMb = (t.max_mb != null ? t.max_mb : '');
 
-               let exts = [];
+               var exts = [];
                try {
                   if (Array.isArray(t.acepta_ext)) exts = t.acepta_ext;
-                  else if (typeof t.acepta_ext === 'string' && t.acepta_ext.trim().startsWith('[')) exts = JSON.parse(t.acepta_ext);
-                  else if (typeof t.acepta_ext === 'string') exts = t.acepta_ext.split(',').map(s => s.trim());
-               } catch { exts = []; }
+                  else if (typeof t.acepta_ext === 'string' && t.acepta_ext.trim().charAt(0) === '[') exts = JSON.parse(t.acepta_ext);
+                  else if (typeof t.acepta_ext === 'string') {
+                     exts = t.acepta_ext.split(',').map(function (s) { return s.trim(); });
+                  }
+               } catch (e) { exts = []; }
 
                opt.dataset.accept = exts.join(',');
-               expTipoSel?.appendChild(opt);
+               if (expTipoSel) expTipoSel.appendChild(opt);
 
-               _tipoByClave.set(t.clave, { id: t.id, clave: t.clave, nombre: t.nombre, max_mb: t.max_mb, acepta_ext: exts });
+               _tipoByClave.set(t.clave, {
+                  id: t.id, clave: t.clave, nombre: t.nombre, max_mb: t.max_mb, acepta_ext: exts
+               });
             }
-         } catch (err) {
+         }).catch(function (err) {
             handleApiError(err, 'No se pudo cargar tipos de documento');
-         }
+         });
       }
 
-      // ---- AG Grid (v29.x compatible) ----
-      const columnDefs = [
+      var fileQueue = new Map();
+      var _uidSeq = 1;
+      function genUid() { return 'f_' + Date.now() + '_' + (_uidSeq++); }
+      function bytesToSize(n) {
+         if (n === undefined || n === null) return '';
+         var kb = 1024, mb = kb * 1024;
+         if (n >= mb) return (n / mb).toFixed(2) + ' MB';
+         if (n >= kb) return (n / kb).toFixed(2) + ' KB';
+         return n + ' B';
+      }
+      function isExtAllowedForType(ext, tipoClave) {
+         var t = _tipoByClave.get(tipoClave);
+         if (!t) return true;
+         var list = (t.acepta_ext || []).map(function (s) { return String(s).replace(/^\./, '').toLowerCase(); });
+         return list.length ? list.indexOf(ext.toLowerCase()) !== -1 : true;
+      }
+      function renderQueue() {
+         if (!expFilesTbody) return;
+         expFilesTbody.innerHTML = '';
+         var idx = 1;
+         fileQueue.forEach(function (rec, uid) {
+            var f = rec.file;
+            var ext = (f.name.split('.').pop() || '').toUpperCase();
+            var tr = document.createElement('tr');
+            tr.setAttribute('data-uid', uid);
+            tr.innerHTML =
+               '<td class="text-muted">' + (idx++) + '</td>' +
+               '<td><span class="badge bg-secondary me-2">' + (ext || 'FILE') + '</span><span class="text-break">' + f.name + '</span></td>' +
+               '<td>' + bytesToSize(f.size) + '</td>' +
+               '<td><select class="form-select form-select-sm sel-tipo">' +
+               (function () {
+                  var parts = ['<option value="">— Selecciona tipo —</option>'];
+                  for (var i = 0; i < _tipos.length; i++) {
+                     var t = _tipos[i];
+                     parts.push('<option value="' + t.clave + '">' + t.nombre + ' (' + t.clave + ')</option>');
+                  }
+                  return parts.join('');
+               })() +
+               '</select></td>' +
+               '<td class="text-end"><button class="btn btn-sm btn-outline-danger btn-del" title="Quitar"><i class="fas fa-times"></i></button></td>';
+            expFilesTbody.appendChild(tr);
+            var sel = tr.querySelector('.sel-tipo');
+            if (sel) {
+               sel.value = rec.tipo_clave || '';
+               sel.addEventListener('change', function () { rec.tipo_clave = sel.value || ''; });
+            }
+            var btnDel = tr.querySelector('.btn-del');
+            if (btnDel) {
+               btnDel.addEventListener('click', function () { fileQueue.delete(uid); renderQueue(); });
+            }
+         });
+      }
+      if (expFilesInput) {
+         expFilesInput.addEventListener('change', function (e) {
+            var files = Array.prototype.slice.call(e.target.files || []);
+            if (!files.length) return;
+            for (var i = 0; i < files.length; i++) {
+               var f = files[i];
+               var uid = genUid();
+               fileQueue.set(uid, { file: f, tipo_clave: '' });
+            }
+            expFilesInput.value = '';
+            renderQueue();
+         });
+      }
+
+      window.__expedienteQueueUpload = function () {
+         return new Promise(function (resolve) {
+            var empresaId = parseInt((expEmpresaId && expEmpresaId.value) ? expEmpresaId.value : '0', 10);
+            if (!empresaId) { toast('warning', 'Selecciona una empresa'); return resolve(false); }
+            var okExp = canPerm('empresa.expediente');
+            if (!okExp) { toast('error', 'No tienes permiso para expediente'); return resolve(false); }
+
+            var missingTipo = [];
+            fileQueue.forEach(function (rec) { if (!rec.tipo_clave) missingTipo.push(rec.file.name); });
+            if (missingTipo.length) {
+               var msgList = missingTipo.slice(0, 3).join(', ') + (missingTipo.length > 3 ? '…' : '');
+               toast('warning', 'Selecciona tipo para: ' + msgList);
+               return resolve(false);
+            }
+            var invalid = null;
+            fileQueue.forEach(function (rec) {
+               if (invalid) return;
+               var ext = (rec.file.name.split('.').pop() || '').toLowerCase();
+               if (!isExtAllowedForType(ext, rec.tipo_clave)) {
+                  var t = _tipoByClave.get(rec.tipo_clave);
+                  var lista = t && t.acepta_ext ? t.acepta_ext.join(', ') : '';
+                  invalid = ' .' + ext + ' no permitido para tipo ' + rec.tipo_clave + '. Permitidas: ' + lista;
+               }
+            });
+            if (invalid) { toast('error', invalid); return resolve(false); }
+
+            getCsrf().then(function (csrf) {
+               var headers = buildCsrfHeaders(csrf);
+               try { if (window.AppLoader && AppLoader.show) AppLoader.show('Subiendo archivos…'); } catch (e) { }
+               var ok = 0, fail = 0;
+               (function uploadNext(iter) {
+                  var it = iter || fileQueue.entries();
+                  var step = it.next ? it.next() : null;
+                  if (!step || step.done) {
+                     try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { }
+                     if (ok && !fail) toast('success', 'Subida completa (' + ok + ')');
+                     else if (ok && fail) toast('warning', 'Subidos ' + ok + ', fallaron ' + fail);
+                     else toast('error', 'No se subió ningún archivo');
+                     renderQueue();
+                     return resolve(ok && !fail);
+                  }
+                  var uid = step.value[0];
+                  var rec = step.value[1];
+                  var fd = new FormData();
+                  fd.append('empresa_id', String(empresaId));
+                  fd.append('tipo_clave', rec.tipo_clave);
+                  fd.append('file', rec.file, rec.file.name);
+                  fetch('/api/v1/empresas/expediente', {
+                     method: 'POST',
+                     credentials: 'same-origin',
+                     headers: headers,
+                     body: fd
+                  }).then(function (resp) {
+                     if (!resp.ok) {
+                        (resp.json ? resp.json() : Promise.resolve({})).then(function (j) {
+                           var msg = (j && j.error && j.error.message) ? j.error.message : 'Error al subir archivo';
+                           toast('error', rec.file.name + ': ' + msg);
+                           fail++;
+                           uploadNext(it);
+                        }).catch(function () {
+                           toast('error', rec.file.name + ': Error al subir archivo');
+                           fail++; uploadNext(it);
+                        });
+                        return;
+                     }
+                     ok++;
+                     fileQueue.delete(uid);
+                     if (expFilesTbody) {
+                        var tr = expFilesTbody.querySelector('tr[data-uid="' + uid + '"]');
+                        if (tr && tr.parentNode) tr.parentNode.removeChild(tr);
+                     }
+                     var selClave = (expTipoSel && expTipoSel.value) ? expTipoSel.value : '';
+                     if (selClave && selClave === rec.tipo_clave) {
+                        var opt = (expTipoSel && expTipoSel.selectedOptions && expTipoSel.selectedOptions[0]) ? expTipoSel.selectedOptions[0] : null;
+                        var tipoId = opt ? parseInt(opt.dataset.id || '0', 10) : 0;
+                        if (empresaId && tipoId) {
+                           loadLatestVersions(empresaId, tipoId, 5, false).then(function () { uploadNext(it); });
+                           return;
+                        }
+                     }
+                     uploadNext(it);
+                  }).catch(function () {
+                     toast('error', rec.file.name + ': Error de red');
+                     fail++; uploadNext(it);
+                  });
+               })(fileQueue.entries());
+            });
+         });
+      };
+
+      function loadLatestVersions(empresaId, tipoId, limit, showAll) {
+         if (limit == null) limit = 5;
+         if (showAll == null) showAll = false;
+         return new Promise(function (resolve) {
+            try { if (window.AppLoader && AppLoader.show) AppLoader.show('Cargando versiones…'); } catch (e) { }
+            var params = new URLSearchParams({ empresa_id: String(empresaId), tipo_id: String(tipoId) });
+            if (!showAll && limit) params.set('limit', String(limit));
+            Api.get('/api/v1/empresas/expediente/versions?' + params.toString())
+               .then(function (j) {
+                  var rows = (j && j.data) ? j.data : [];
+                  renderLastList(rows);
+                  resolve();
+               })
+               .catch(function (err) { handleApiError(err, 'No se pudieron cargar versiones'); resolve(); })
+               .finally(function () { try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { } });
+         });
+      }
+      function renderLastList(rows) {
+         if (!expLastWrap || !expLastBody) return;
+         expLastBody.innerHTML = '';
+         if (!rows || rows.length === 0) {
+            expLastWrap.style.display = 'none';
+            return;
+         }
+         expLastWrap.style.display = '';
+         for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var tr = document.createElement('tr');
+            var fecha = r.creado_en || r.subido_en || '';
+            tr.innerHTML =
+               '<td>' + (r.version != null ? r.version : '') + '</td>' +
+               '<td>' + (r.archivo_nombre != null ? r.archivo_nombre : '') + '</td>' +
+               '<td><small>' + fecha + '</small></td>' +
+               '<td class="text-right">' +
+               '  <button class="btn btn-xs btn-outline-primary" data-act="exp-dl" data-id="' + r.id + '"><i class="fas fa-download"></i></button> ' +
+               '  <a class="btn btn-xs btn-outline-secondary" href="' + ((r.archivo_path || '#')) + '" target="_blank" rel="noopener" title="Abrir"><i class="fas fa-external-link-alt"></i></a>' +
+               '</td>';
+            expLastBody.appendChild(tr);
+         }
+      }
+      if (expLastBody) {
+         expLastBody.addEventListener('click', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('button[data-act="exp-dl"]') : null;
+            if (!btn) return;
+            var docId = parseInt(btn.getAttribute('data-id') || '0', 10);
+            var empresaId = parseInt((expEmpresaId && expEmpresaId.value) ? expEmpresaId.value : '0', 10);
+            if (!empresaId || !docId) return;
+            window.open('/api/v1/empresas/expediente/download?empresa_id=' + empresaId + '&doc_id=' + docId + '&stream=1', '_blank');
+         });
+      }
+      if (expTipoSel) {
+         expTipoSel.addEventListener('change', function () {
+            var empresaId = parseInt((expEmpresaId && expEmpresaId.value) ? expEmpresaId.value : '0', 10);
+            var opt = (expTipoSel.selectedOptions && expTipoSel.selectedOptions[0]) ? expTipoSel.selectedOptions[0] : null;
+            var tipoId = opt ? parseInt(opt.dataset.id || '0', 10) : 0;
+            if (empresaId && tipoId) loadLatestVersions(empresaId, tipoId, 5, false);
+         });
+      }
+
+      // ---- AG Grid ----
+      var columnDefs = [
          { headerName: '#', valueGetter: 'node.rowIndex + 1', width: 70 },
          { headerName: 'Cliente', field: 'cliente_grupo', flex: 1 },
          { headerName: 'Nombre', field: 'nombre', flex: 1.2, minWidth: 180 },
-         { headerName: 'RFC', field: 'rfc', width: 160, cellRenderer: p => `<code>${p.value || ''}</code>` },
+         { headerName: 'RFC', field: 'rfc', width: 160, cellRenderer: function (p) { return '<code>' + (p.value || '') + '</code>'; } },
          { headerName: 'Tipo', field: 'tipo_persona', width: 110 },
          { headerName: 'Área', field: 'area_id', width: 100 },
          { headerName: 'Responsable', field: 'responsable_id', width: 120 },
-         { headerName: 'Activo', field: 'activo', width: 100, valueFormatter: p => p.value ? 'Sí' : 'No' },
+         { headerName: 'Activo', field: 'activo', width: 100, valueFormatter: function (p) { return p.value ? 'Sí' : 'No'; } }
       ];
-
-      const gridOptions = {
-         columnDefs,
+      var gridOptions = {
+         columnDefs: columnDefs,
          rowData: [],
          animateRows: true,
          rowHeight: 42,
@@ -250,68 +494,58 @@
          paginationPageSize: 20,
          rowSelection: 'single',
          suppressRowClickSelection: true,
-         onRowClicked: (e) => {
-            const wasSelected = e.node.isSelected();
+         onRowClicked: function (e) {
+            var wasSelected = e.node.isSelected();
             e.node.setSelected(!wasSelected, true);
             updateActionButtons();
          },
-         onSelectionChanged: () => updateActionButtons(),
+         onSelectionChanged: function () { updateActionButtons(); }
       };
-
-      const gridApiOrInstance = (typeof agGrid.Grid === 'function')
+      var gridApiOrInstance = (typeof agGrid.Grid === 'function')
          ? new agGrid.Grid(gridEl, gridOptions)
-         : agGrid.createGrid?.(gridEl, gridOptions);
+         : (agGrid.createGrid ? agGrid.createGrid(gridEl, gridOptions) : null);
 
       function getSelectedRow() {
-         const api = gridOptions.api || gridApiOrInstance?.api || gridApiOrInstance;
-         const sel = api?.getSelectedRows?.();
+         var api = gridOptions.api || (gridApiOrInstance && gridApiOrInstance.api) || gridApiOrInstance;
+         var sel = (api && typeof api.getSelectedRows === 'function') ? api.getSelectedRows() : null;
          return (sel && sel[0]) ? sel[0] : null;
       }
-      // Exportar helpers para el módulo de Obligaciones
       window.__emp_getSelected = getSelectedRow;
-      window.__emp_toast = toast;
       window.__emp_canPerm = canPerm;
-      window.__emp_fillSelect = fillSelect;
-      // catálogos para selects del drawer
       Object.defineProperty(window, '__emp_catalogs', {
-         get() { return { areas: _areas, jefes: _jefes }; }
+         get: function () { return { areas: _areas, jefes: _jefes }; }
       });
 
-
-      // ===== Permisos =====
-      const canPerm = (p) => window.__canPerm ? window.__canPerm(p) : Promise.resolve(false);
-
       // ---- Carga de datos ----
-      async function loadData() {
-         try {
-            AppLoader?.show('Cargando empresas…');
-            const params = new URLSearchParams({ page: '1', size: '200' });
-            const q = (fQ?.value || '').trim();
-            const activo = (fActivo?.value ?? '');
-            const areaId = (fArea?.value || '');
-
+      function loadData() {
+         return new Promise(function (resolve) {
+            try { if (window.AppLoader && AppLoader.show) AppLoader.show('Cargando empresas…'); } catch (e) { }
+            var params = new URLSearchParams({ page: '1', size: '200' });
+            var q = (fQ && fQ.value ? fQ.value : '').trim();
+            var activo = (fActivo && (fActivo.value !== undefined && fActivo.value !== null)) ? fActivo.value : '';
+            var areaId = (fArea && fArea.value) ? fArea.value : '';
             if (q) params.set('q', q);
             if (activo !== '') params.set('activo', activo);
             if (areaId) params.set('area_id', areaId);
-
-            const j = await Api.get('/api/v1/empresas?' + params.toString());
-            const rows = j.data || [];
-
-            const api = gridOptions.api || gridApiOrInstance?.api || gridApiOrInstance;
-            api?.setRowData?.(rows);
-            api?.deselectAll?.();
-
-            updateActionButtons();
-            toast('info', `Empresas cargadas: ${rows.length}`);
-         } catch (err) {
-            handleApiError(err, 'No se pudo cargar empresas');
-         } finally {
-            AppLoader?.hide();
-         }
+            Api.get('/api/v1/empresas?' + params.toString()).then(function (j) {
+               var rows = j.data || [];
+               var api = gridOptions.api || (gridApiOrInstance && gridApiOrInstance.api) || gridApiOrInstance;
+               if (api && typeof api.setRowData === 'function') api.setRowData(rows);
+               if (api && typeof api.deselectAll === 'function') api.deselectAll();
+               updateActionButtons();
+               toast('info', 'Empresas cargadas: ' + rows.length);
+               resolve();
+            }).catch(function (err) {
+               handleApiError(err, 'No se pudo cargar empresas');
+               resolve();
+            }).finally(function () {
+               try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { }
+            });
+         });
       }
 
-      // ---- Modal de Empresa ----
-      let modalIsOpen = false;
+      // ---- Modal Empresa (CRUD) (sin cambios funcionales) ----
+      var modalIsOpen = false;
       function resetForm() {
          if (fId) fId.value = '';
          if (fCli) fCli.value = '';
@@ -321,7 +555,6 @@
          if (fAreaId) fAreaId.value = '';
          if (fRespId) fRespId.value = '';
          if (fActv) fActv.value = '1';
-
          if (fCont) fCont.value = '';
          if (fNFac) fNFac.value = '';
          if (fTFact) fTFact.value = '';
@@ -336,7 +569,7 @@
          modalEl.removeAttribute('aria-hidden');
          modalEl.setAttribute('aria-modal', 'true');
          if (!document.querySelector('.modal-backdrop')) {
-            const bd = document.createElement('div');
+            var bd = document.createElement('div');
             bd.className = 'modal-backdrop fade show';
             document.body.appendChild(bd);
          }
@@ -348,442 +581,235 @@
          modalEl.style.display = 'none';
          modalEl.setAttribute('aria-hidden', 'true');
          modalEl.removeAttribute('aria-modal');
-         document.querySelector('.modal-backdrop')?.remove();
+         var bd = document.querySelector('.modal-backdrop');
+         if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
          document.body.classList.remove('modal-open');
          modalIsOpen = false;
       }
-      modalEl?.querySelector('[data-dismiss="modal"], .close')?.addEventListener('click', (e) => {
-         e.preventDefault();
-         hideModal();
-      });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalIsOpen) hideModal(); });
-
-      async function openCreate() {
-         const ok = await canPerm('empresa.crear');
-         if (!ok) { toast('error', 'No tienes permiso para crear'); return; }
-         resetForm();
-         modalTitle.textContent = 'Nueva empresa';
-         showModal();
-      }
-      async function openEdit(row) {
-         if (!row) return;
-         const ok = await canPerm('empresa.editar');
-         if (!ok) { toast('error', 'No tienes permiso para editar'); return; }
-
-         resetForm();
-         modalTitle.textContent = `Editar empresa #${row.id}`;
-         let data = { ...row };
-
-         if (USE_DETAIL_FALLBACK) {
-            try {
-               AppLoader?.show('Cargando detalle…');
-               const det = await Api.get('/api/v1/empresas/show?id=' + encodeURIComponent(row.id));
-               if (det?.ok && det.data) data = det.data;
-            } catch (err) {
-               handleApiError(err, 'No se pudo cargar el detalle de la empresa');
-            } finally {
-               AppLoader?.hide();
-            }
+      if (modalEl) {
+         var _btnClose = modalEl.querySelector('[data-dismiss="modal"], .close');
+         if (_btnClose) {
+            _btnClose.addEventListener('click', function (e) { e.preventDefault(); hideModal(); });
          }
-
-         fId.value = data.id ?? '';
-         fCli.value = data.cliente_grupo ?? '';
-         fNom.value = data.nombre ?? '';
-         fRfc.value = (data.rfc ?? '').toUpperCase();
-         fTipo.value = data.tipo_persona ?? 'FISICA';
-         fAreaId.value = (data.area_id ?? '').toString();
-         fRespId.value = (data.responsable_id ?? '').toString();
-         fActv.value = data.activo ? '1' : '0';
-
-         fCont.value = data.contrato_servicios ?? '';
-         fNFac.value = data.nombre_facturacion ?? '';
-         fCFact.value = data.correo_facturacion ?? '';
-         fTFact.value = data.telefono_facturacion ?? '';
-         fReg.value = data.tipo_regimen ?? '';
-         fAct.value = data.actividad_principal ?? '';
-         fEdoDom.value = data.estatus_domicilio ?? 'LOCALIZADO';
-
-         showModal();
       }
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modalIsOpen) hideModal(); });
 
-      // ---- Guardar (create/update) ----
-      btnSave?.addEventListener('click', async () => {
-         const payload = {
-            id: fId?.value ? parseInt(fId.value, 10) : undefined,
-            cliente_grupo: (fCli?.value || '').trim(),
-            nombre: (fNom?.value || '').trim(),
-            rfc: (fRfc?.value || '').trim().toUpperCase(),
-            tipo_persona: fTipo?.value || 'FISICA',
-            area_id: fAreaId?.value ? parseInt(fAreaId.value, 10) : null,
-            responsable_id: fRespId?.value ? parseInt(fRespId.value, 10) : null,
-            activo: fActv?.value ? parseInt(fActv.value, 10) : 1,
-            contrato_servicios: (fCont?.value || '').trim(),
-            nombre_facturacion: (fNFac?.value || '').trim(),
-            telefono_facturacion: (fTFact?.value || '').trim(),
-            correo_facturacion: (fCFact?.value || '').trim(),
-            tipo_regimen: (fReg?.value || '').trim(),
-            actividad_principal: (fAct?.value || '').trim(),
-            estatus_domicilio: fEdoDom?.value || 'LOCALIZADO'
-         };
-
-         if (!payload.nombre || !payload.rfc) { toast('warning', 'Nombre y RFC son requeridos'); return; }
-
-         try {
-            AppLoader?.show('Guardando…');
-            if (!payload.id) {
-               const ok = await canPerm('empresa.crear');
-               if (!ok) { toast('error', 'No tienes permiso para crear'); return; }
-               const j = await Api.post('/api/v1/empresas', payload);
-               if (j.ok) { toast('success', 'Empresa creada'); hideModal(); await loadData(); }
-               else toast('warning', j.error?.message || 'No se pudo crear la empresa');
+      function openCreate() {
+         return new Promise(function (resolve) {
+            var ok = canPerm('empresa.crear');
+            if (!ok) { toast('error', 'No tienes permiso para crear'); return resolve(false); }
+            resetForm();
+            if (modalTitle) modalTitle.textContent = 'Nueva empresa';
+            showModal();
+            resolve(true);
+         });
+      }
+      function openEdit(row) {
+         return new Promise(function (resolve) {
+            if (!row) return resolve(false);
+            var ok = canPerm('empresa.editar');
+            if (!ok) { toast('error', 'No tienes permiso para editar'); return resolve(false); }
+            resetForm();
+            if (modalTitle) modalTitle.textContent = 'Editar empresa #' + row.id;
+            var data = row;
+            function fillAndShow() {
+               if (fId) fId.value = (data.id != null ? data.id : '');
+               if (fCli) fCli.value = data.cliente_grupo != null ? data.cliente_grupo : '';
+               if (fNom) fNom.value = data.nombre != null ? data.nombre : '';
+               if (fRfc) fRfc.value = (data.rfc != null ? String(data.rfc).toUpperCase() : '');
+               if (fTipo) fTipo.value = data.tipo_persona != null ? data.tipo_persona : 'FISICA';
+               if (fAreaId) fAreaId.value = (data.area_id != null ? String(data.area_id) : '');
+               if (fRespId) fRespId.value = (data.responsable_id != null ? String(data.responsable_id) : '');
+               if (fActv) fActv.value = data.activo ? '1' : '0';
+               if (fCont) fCont.value = data.contrato_servicios != null ? data.contrato_servicios : '';
+               if (fNFac) fNFac.value = data.nombre_facturacion != null ? data.nombre_facturacion : '';
+               if (fCFact) fCFact.value = data.correo_facturacion != null ? data.correo_facturacion : '';
+               if (fTFact) fTFact.value = data.telefono_facturacion != null ? data.telefono_facturacion : '';
+               if (fReg) fReg.value = data.tipo_regimen != null ? data.tipo_regimen : '';
+               if (fAct) fAct.value = data.actividad_principal != null ? data.actividad_principal : '';
+               if (fEdoDom) fEdoDom.value = data.estatus_domicilio != null ? data.estatus_domicilio : 'LOCALIZADO';
+               showModal(); resolve(true);
+            }
+            if (USE_DETAIL_FALLBACK) {
+               try { if (window.AppLoader && AppLoader.show) AppLoader.show('Cargando detalle…'); } catch (e) { }
+               Api.get('/api/v1/empresas/show?id=' + encodeURIComponent(row.id))
+                  .then(function (det) { if (det && det.ok && det.data) data = det.data; fillAndShow(); })
+                  .catch(function (err) { handleApiError(err, 'No se pudo cargar el detalle de la empresa'); fillAndShow(); })
+                  .finally(function () { try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { } });
             } else {
-               const ok = await canPerm('empresa.editar');
-               if (!ok) { toast('error', 'No tienes permiso para editar'); return; }
-               const j = await Api.put('/api/v1/empresas', payload);
-               if (j.ok) { toast('success', 'Empresa actualizada'); hideModal(); await loadData(); }
-               else toast('warning', j.error?.message || 'No se pudo actualizar la empresa');
+               fillAndShow();
             }
-         } catch (err) {
-            handleApiError(err, 'Error al guardar empresa');
-         } finally {
-            AppLoader?.hide();
-         }
-      });
+         });
+      }
 
-      // ---- Eliminar ----
-      async function delEmpresa(row) {
+      // Guardar empresa
+      if (btnSave) {
+         btnSave.addEventListener('click', function () {
+            var payload = {
+               id: (fId && fId.value) ? parseInt(fId.value, 10) : undefined,
+               cliente_grupo: (fCli && fCli.value) ? String(fCli.value).trim() : '',
+               nombre: (fNom && fNom.value) ? String(fNom.value).trim() : '',
+               rfc: (fRfc && fRfc.value) ? String(fRfc.value).trim().toUpperCase() : '',
+               tipo_persona: (fTipo && fTipo.value) ? fTipo.value : 'FISICA',
+               area_id: (fAreaId && fAreaId.value) ? parseInt(fAreaId.value, 10) : null,
+               responsable_id: (fRespId && fRespId.value) ? parseInt(fRespId.value, 10) : null,
+               activo: (fActv && fActv.value) ? parseInt(fActv.value, 10) : 1,
+               contrato_servicios: (fCont && fCont.value) ? String(fCont.value).trim() : '',
+               nombre_facturacion: (fNFac && fNFac.value) ? String(fNFac.value).trim() : '',
+               telefono_facturacion: (fTFact && fTFact.value) ? String(fTFact.value).trim() : '',
+               correo_facturacion: (fCFact && fCFact.value) ? String(fCFact.value).trim() : '',
+               tipo_regimen: (fReg && fReg.value) ? String(fReg.value).trim() : '',
+               actividad_principal: (fAct && fAct.value) ? String(fAct.value).trim() : '',
+               estatus_domicilio: (fEdoDom && fEdoDom.value) ? fEdoDom.value : 'LOCALIZADO'
+            };
+            if (!payload.nombre || !payload.rfc) { toast('warning', 'Nombre y RFC son requeridos'); return; }
+
+            try { if (window.AppLoader && AppLoader.show) AppLoader.show('Guardando…'); } catch (e) { }
+            if (!payload.id) {
+               var okCreate = canPerm('empresa.crear');
+               if (!okCreate) { toast('error', 'No tienes permiso para crear'); try { AppLoader.hide(); } catch (e) { } return; }
+               Api.post('/api/v1/empresas', payload).then(function (j) {
+                  if (j.ok) { toast('success', 'Empresa creada'); hideModal(); loadData(); }
+                  else toast('warning', (j.error && j.error.message) || 'No se pudo crear la empresa');
+               }).catch(function (err) {
+                  handleApiError(err, 'Error al guardar empresa');
+               }).finally(function () { try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { } });
+            } else {
+               var okEdit = canPerm('empresa.editar');
+               if (!okEdit) { toast('error', 'No tienes permiso para editar'); try { AppLoader.hide(); } catch (e) { } return; }
+               Api.put('/api/v1/empresas', payload).then(function (j) {
+                  if (j.ok) { toast('success', 'Empresa actualizada'); hideModal(); loadData(); }
+                  else toast('warning', (j.error && j.error.message) || 'No se pudo actualizar la empresa');
+               }).catch(function (err) {
+                  handleApiError(err, 'Error al guardar empresa');
+               }).finally(function () { try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { } });
+            }
+         });
+      }
+
+      // Eliminar
+      function delEmpresa(row) {
+         return new Promise(function (resolve) {
+            if (!row) { toast('warning', 'Selecciona una empresa'); return resolve(false); }
+            var okDel = canPerm('empresa.borrar');
+            if (!okDel) { toast('error', 'No tienes permiso para eliminar'); return resolve(false); }
+            if (!window.confirm('¿Eliminar (baja lógica) esta empresa?')) return resolve(false);
+            try { if (window.AppLoader && AppLoader.show) AppLoader.show('Eliminando…'); } catch (e) { }
+            Api.del('/api/v1/empresas?id=' + encodeURIComponent(row.id))
+               .then(function (j) {
+                  if (j.ok) { toast('success', 'Empresa eliminada'); return loadData().then(function () { resolve(true); }); }
+                  else { toast('warning', (j.error && j.error.message) || 'No se pudo eliminar la empresa'); resolve(false); }
+               })
+               .catch(function (err) { handleApiError(err, 'Error al eliminar empresa'); resolve(false); })
+               .finally(function () { try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { } });
+         });
+      }
+
+      // Expediente: abrir modal (restaurado, sin tocar más UI)
+      if (btnExp) btnExp.addEventListener('click', function () {
+         var row = getSelectedRow();
          if (!row) { toast('warning', 'Selecciona una empresa'); return; }
-         const ok = await canPerm('empresa.borrar');
-         if (!ok) { toast('error', 'No tienes permiso para eliminar'); return; }
-         if (!window.confirm('¿Eliminar (baja lógica) esta empresa?')) return;
-
-         try {
-            AppLoader?.show('Eliminando…');
-            const j = await Api.del('/api/v1/empresas?id=' + encodeURIComponent(row.id));
-            if (j.ok) { toast('success', 'Empresa eliminada'); await loadData(); }
-            else toast('warning', j.error?.message || 'No se pudo eliminar la empresa');
-         } catch (err) {
-            handleApiError(err, 'Error al eliminar empresa');
-         } finally {
-            AppLoader?.hide();
-         }
-      }
-
-      // ===================== EXPEDIENTE =====================
-      function buildTipoOptionsHtml() {
-         return `<option value="">— Selecciona tipo —</option>` + _tipos
-            .map(t => `<option value="${t.clave}">${t.nombre} (${t.clave})</option>`)
-            .join('');
-      }
-      const fileQueue = new Map();
-      let _uidSeq = 1;
-      const genUid = () => `f_${Date.now()}_${_uidSeq++}`;
-
-      function bytesToSize(n) {
-         if (!n && n !== 0) return '';
-         const kb = 1024, mb = kb * 1024;
-         if (n >= mb) return (n / mb).toFixed(2) + ' MB';
-         if (n >= kb) return (n / kb).toFixed(2) + ' KB';
-         return n + ' B';
-      }
-      function isExtAllowedForType(ext, tipoClave) {
-         const t = _tipoByClave.get(tipoClave);
-         if (!t) return true;
-         const list = (t.acepta_ext || []).map(s => String(s).replace(/^\./, '').toLowerCase());
-         return list.length ? list.includes(ext.toLowerCase()) : true;
-      }
-      function renderQueue() {
-         if (!expFilesTbody) return;
-         expFilesTbody.innerHTML = '';
-         let idx = 1;
-         for (const [uid, rec] of fileQueue.entries()) {
-            const f = rec.file;
-            const ext = (f.name.split('.').pop() || '').toUpperCase();
-            const tr = document.createElement('tr');
-            tr.dataset.uid = uid;
-            tr.innerHTML = `
-          <td class="text-muted">${idx++}</td>
-          <td>
-            <span class="badge bg-secondary me-2">${ext || 'FILE'}</span>
-            <span class="text-break">${f.name}</span>
-          </td>
-          <td>${bytesToSize(f.size)}</td>
-          <td>
-            <select class="form-select form-select-sm sel-tipo">${buildTipoOptionsHtml()}</select>
-          </td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-danger btn-del" title="Quitar">
-              <i class="fas fa-times"></i>
-            </button>
-          </td>`;
-            expFilesTbody.appendChild(tr);
-            const sel = tr.querySelector('.sel-tipo');
-            if (sel) {
-               sel.value = rec.tipo_clave || '';
-               sel.addEventListener('change', () => {
-                  rec.tipo_clave = sel.value || '';
-               });
-            }
-            tr.querySelector('.btn-del')?.addEventListener('click', () => {
-               fileQueue.delete(uid);
-               renderQueue();
-            });
-         }
-      }
-      expFilesInput?.addEventListener('change', (e) => {
-         const files = Array.from(e.target.files || []);
-         if (!files.length) return;
-         for (const f of files) {
-            const uid = genUid();
-            fileQueue.set(uid, { file: f, tipo_clave: '' });
-         }
-         expFilesInput.value = '';
-         renderQueue();
-      });
-
-      window.__expedienteQueueUpload = async function () {
-         const empresaId = parseInt(expEmpresaId?.value || '0', 10);
-         if (!empresaId) return toast('warning', 'Selecciona una empresa');
-         const okExp = await canPerm('empresa.expediente');
-         if (!okExp) { toast('error', 'No tienes permiso para expediente'); return; }
-
-         const missingTipo = [];
-         for (const [, rec] of fileQueue.entries()) {
-            if (!rec.tipo_clave) missingTipo.push(rec.file.name);
-         }
-         if (missingTipo.length) {
-            toast('warning', `Selecciona tipo para: ${missingTipo.slice(0, 3).join(', ')}${missingTipo.length > 3 ? '…' : ''}`);
-            return;
-         }
-         for (const [, rec] of fileQueue.entries()) {
-            const ext = (rec.file.name.split('.').pop() || '').toLowerCase();
-            if (!isExtAllowedForType(ext, rec.tipo_clave)) {
-               const t = _tipoByClave.get(rec.tipo_clave);
-               const lista = (t?.acepta_ext || []).join(', ');
-               toast('error', `.${ext} no permitido para tipo ${rec.tipo_clave}. Permitidas: ${lista}`);
-               return;
-            }
-         }
-         const csrf = await getCsrf();
-         const headers = buildCsrfHeaders(csrf);
-
-         AppLoader?.show('Subiendo archivos…');
-         let ok = 0, fail = 0;
-         for (const [uid, rec] of fileQueue.entries()) {
-            const fd = new FormData();
-            fd.append('empresa_id', String(empresaId));
-            fd.append('tipo_clave', rec.tipo_clave);
-            fd.append('file', rec.file, rec.file.name);
-            try {
-               const resp = await fetch('/api/v1/empresas/expediente', {
-                  method: 'POST',
-                  credentials: 'same-origin',
-                  headers,
-                  body: fd
-               });
-               if (!resp.ok) {
-                  let msg = 'Error al subir archivo';
-                  try { const j = await resp.json(); msg = j?.error?.message || msg; } catch { }
-                  toast('error', `${rec.file.name}: ${msg}`);
-                  fail++; continue;
-               }
-               ok++;
-               fileQueue.delete(uid);
-               const tr = expFilesTbody?.querySelector(`tr[data-uid="${uid}"]`);
-               tr?.remove();
-
-               const selClave = expTipoSel?.value || '';
-               if (selClave && selClave === rec.tipo_clave) {
-                  const opt = expTipoSel?.selectedOptions?.[0];
-                  const tipoId = opt ? parseInt(opt.dataset.id || '0', 10) : 0;
-                  if (empresaId && tipoId) await loadLatestVersions(empresaId, tipoId, 5, false);
-               }
-            } catch (e) {
-               console.error(e);
-               toast('error', `${rec.file.name}: Error de red`);
-               fail++;
-            }
-         }
-         AppLoader?.hide();
-         if (ok && !fail) toast('success', `Subida completa (${ok})`);
-         else if (ok && fail) toast('warning', `Subidos ${ok}, fallaron ${fail}`);
-         else toast('error', 'No se subió ningún archivo');
-
-         renderQueue();
-      };
-
-      async function loadLatestVersions(empresaId, tipoId, limit = 5, showAll = false) {
-         try {
-            AppLoader?.show('Cargando versiones…');
-            const params = new URLSearchParams({ empresa_id: String(empresaId), tipo_id: String(tipoId) });
-            if (!showAll && limit) params.set('limit', String(limit));
-            const j = await Api.get('/api/v1/empresas/expediente/versions?' + params.toString());
-            const rows = j?.data || [];
-            renderLastList(rows);
-         } catch (err) {
-            handleApiError(err, 'No se pudieron cargar versiones');
-         } finally {
-            AppLoader?.hide();
-         }
-      }
-      function renderLastList(rows) {
-         if (!expLastWrap || !expLastBody) return;
-         expLastBody.innerHTML = '';
-         if (!rows || rows.length === 0) {
-            expLastWrap.style.display = 'none';
-            return;
-         }
-         expLastWrap.style.display = '';
-         for (const r of rows) {
-            const tr = document.createElement('tr');
-            const fecha = r.creado_en || r.subido_en || '';
-            tr.innerHTML = `
-          <td>${r.version ?? ''}</td>
-          <td>${r.archivo_nombre ?? ''}</td>
-          <td><small>${fecha}</small></td>
-          <td class="text-right">
-            <button class="btn btn-xs btn-outline-primary" data-act="exp-dl" data-id="${r.id}"><i class="fas fa-download"></i></button>
-            <a class="btn btn-xs btn-outline-secondary" href="${(r.archivo_path || '#')}" target="_blank" rel="noopener" title="Abrir"><i class="fas fa-external-link-alt"></i></a>
-          </td>`;
-            expLastBody.appendChild(tr);
-         }
-      }
-      expLastBody?.addEventListener('click', (e) => {
-         const btn = e.target.closest('button[data-act="exp-dl"]');
-         if (!btn) return;
-         const docId = parseInt(btn.getAttribute('data-id') || '0', 10);
-         const empresaId = parseInt(expEmpresaId.value || '0', 10);
-         if (!empresaId || !docId) return;
-         window.open(`/api/v1/empresas/expediente/download?empresa_id=${empresaId}&doc_id=${docId}&stream=1`, '_blank');
-      });
-      expTipoSel?.addEventListener('change', () => {
-         const empresaId = parseInt(expEmpresaId?.value || '0', 10);
-         const opt = expTipoSel?.selectedOptions?.[0];
-         const tipoId = opt ? parseInt(opt.dataset.id || '0', 10) : 0;
-         if (empresaId && tipoId) loadLatestVersions(empresaId, tipoId, 5, false);
-      });
-
-      // ---- Toolbar: estado según selección + permisos ----
-      async function updateActionButtons() {
-         const selected = getSelectedRow();
-         const [canCreate, canEdit, canDelete, canExp, canOblVer] = await Promise.all([
-            canPerm('empresa.crear'),
-            canPerm('empresa.editar'),
-            canPerm('empresa.borrar'),
-            canPerm('empresa.expediente'),
-            canPerm('empresa.obligacion.ver'),
-         ]);
-
-         if (selected) {
-            btnNew?.classList.remove('btn-success');
-            btnNew?.classList.add('btn-warning');
-            if (btnNew) {
-               btnNew.innerHTML = '<i class="fas fa-pen"></i> Editar';
-               btnNew.title = canEdit ? 'Editar empresa' : 'No autorizado para editar';
-               setEnabled(btnNew, canEdit);
-            }
-            if (btnEdit) {
-               btnEdit.title = canEdit ? 'Editar empresa' : 'No autorizado para editar';
-               setEnabled(btnEdit, canEdit);
-            }
-            if (btnDelete) {
-               btnDelete.title = canDelete ? 'Eliminar empresa' : 'No autorizado para eliminar';
-               setEnabled(btnDelete, canDelete);
-            }
-            setEnabled(btnExp, canExp);
-
-            // Obligaciones: habilitado SOLO con selección + permiso ver
-            setEnabled(btnObl, canOblVer === true);
-         } else {
-            btnNew?.classList.remove('btn-warning');
-            btnNew?.classList.add('btn-success');
-            if (btnNew) {
-               btnNew.innerHTML = '<i class="fas fa-plus"></i> Nuevo';
-               btnNew.title = canCreate ? 'Registrar nueva empresa' : 'No autorizado para crear';
-               setEnabled(btnNew, canCreate);
-            }
-            setEnabled(btnEdit, false);
-            if (btnDelete) {
-               setEnabled(btnDelete, false);
-               btnDelete.title = 'Selecciona una empresa para eliminar';
-            }
-            setEnabled(btnExp, false);
-
-            // Obligaciones: deshabilitado sin selección
-            setEnabled(btnObl, false);
-         }
-      }
-
-      // ---- Eventos UI ----
-      btnSearch?.addEventListener('click', loadData);
-      btnNew?.addEventListener('click', async (e) => {
-         e.preventDefault();
-         const selected = getSelectedRow();
-         if (selected) await openEdit(selected);
-         else await openCreate();
-      });
-      btnEdit?.addEventListener('click', async (e) => {
-         e.preventDefault();
-         const selected = getSelectedRow();
-         await openEdit(selected);
-      });
-      btnDelete?.addEventListener('click', async () => {
-         const selected = getSelectedRow();
-         await delEmpresa(selected);
-      });
-      btnExp?.addEventListener('click', async () => {
-         const row = getSelectedRow();
-         if (!row) { toast('warning', 'Selecciona una empresa'); return; }
-         // abrir modal expediente
-         const ok = await canPerm('empresa.expediente');
+         var ok = canPerm('empresa.expediente');
          if (!ok) { toast('error', 'No tienes permiso para expediente'); return; }
 
-         expEmpresaId.value = String(row.id);
-         expEmpresaNm.value = row.nombre ?? '';
-         if (expEmpresaTitle) expEmpresaTitle.textContent = `Expediente de: ${row.nombre ?? '(Sin nombre)'} (ID ${row.id})`;
+         if (expEmpresaId) expEmpresaId.value = String(row.id);
+         if (expEmpresaNm) expEmpresaNm.value = row.nombre != null ? row.nombre : '';
+         if (expEmpresaTitle) expEmpresaTitle.textContent = 'Expediente de: ' + (row.nombre != null ? row.nombre : '(Sin nombre)') + ' (ID ' + row.id + ')';
 
          if (expTipoSel) expTipoSel.value = '';
-         // limpiar lista versiones y cola
-         expLastBody.innerHTML = '';
+         if (expLastBody) expLastBody.innerHTML = '';
          fileQueue.clear();
          renderQueue();
 
-         if (!_tipos || _tipos.length === 0) await loadTiposDocumento();
+         var openModal = function () {
+            if (!modalExpEl) return;
+            modalExpEl.classList.add('show');
+            modalExpEl.style.display = 'block';
+            modalExpEl.removeAttribute('aria-hidden');
+            modalExpEl.setAttribute('aria-modal', 'true');
+            if (!document.querySelector('.modal-backdrop')) {
+               var bd2 = document.createElement('div');
+               bd2.className = 'modal-backdrop fade show';
+               document.body.appendChild(bd2);
+            }
+            document.body.classList.add('modal-open');
+         };
 
-         // mostrar modal
-         if (!modalExpEl) return;
-         modalExpEl.classList.add('show');
-         modalExpEl.style.display = 'block';
-         modalExpEl.removeAttribute('aria-hidden');
-         modalExpEl.setAttribute('aria-modal', 'true');
-         if (!document.querySelector('.modal-backdrop')) {
-            const bd = document.createElement('div');
-            bd.className = 'modal-backdrop fade show';
-            document.body.appendChild(bd);
+         if (!_tipos || _tipos.length === 0) {
+            loadTiposDocumento().then(function () { openModal(); });
+         } else {
+            openModal();
          }
-         document.body.classList.add('modal-open');
       });
-      document.addEventListener('keydown', (e) => {
-         if (e.key === 'Escape' && modalExpEl?.classList.contains('show')) {
+      document.addEventListener('keydown', function (e) {
+         if (e.key === 'Escape' && modalExpEl && modalExpEl.classList.contains('show')) {
             modalExpEl.classList.remove('show');
             modalExpEl.style.display = 'none';
             modalExpEl.setAttribute('aria-hidden', 'true');
             modalExpEl.removeAttribute('aria-modal');
-            document.querySelector('.modal-backdrop')?.remove();
+            var bd = document.querySelector('.modal-backdrop');
+            if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
             document.body.classList.remove('modal-open');
          }
       });
 
-      fQ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); loadData(); } });
+      if (btnSearch) btnSearch.addEventListener('click', function () { loadData(); });
+      if (btnNew) btnNew.addEventListener('click', function (e) {
+         e.preventDefault();
+         var selected = getSelectedRow();
+         if (selected) openEdit(selected);
+         else openCreate();
+      });
+      if (btnEdit) btnEdit.addEventListener('click', function (e) {
+         e.preventDefault();
+         var selected = getSelectedRow();
+         openEdit(selected);
+      });
+      if (btnDelete) btnDelete.addEventListener('click', function () {
+         var selected = getSelectedRow();
+         delEmpresa(selected);
+      });
+      if (fQ) {
+         fQ.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); loadData(); }
+         });
+      }
 
-      // ---- Primera carga ----
-      (async () => {
-         await loadCatalogs();
-         await loadTiposDocumento();
-         await loadData();
-         if (window.__applyGates) window.__applyGates(document);
-         updateActionButtons();
+      // Primera carga
+      (function () {
+         loadCatalogs()
+            .then(loadTiposDocumento)
+            .then(loadData)
+            .then(function () { if (window.__applyGates) window.__applyGates(document); })
+            .then(updateActionButtons);
       })();
+
+      // Toolbar estado
+      function updateActionButtons() {
+         return new Promise(function (resolve) {
+            var selected = getSelectedRow();
+            var canCreate = !!canPerm('empresa.crear');
+            var canEdit = !!canPerm('empresa.editar');
+            var canDelete = !!canPerm('empresa.borrar');
+            var canExp = !!canPerm('empresa.expediente');
+            var canOblVer = !!canPerm('empresa.obligacion.ver');
+
+            if (selected) {
+               if (btnNew) { btnNew.classList.remove('btn-success'); btnNew.classList.add('btn-warning'); btnNew.innerHTML = '<i class="fas fa-pen"></i> Editar'; btnNew.title = canEdit ? 'Editar empresa' : 'No autorizado para editar'; setEnabled(btnNew, canEdit); }
+               if (btnEdit) { btnEdit.title = canEdit ? 'Editar empresa' : 'No autorizado para editar'; setEnabled(btnEdit, canEdit); }
+               if (btnDelete) { btnDelete.title = canDelete ? 'Eliminar empresa' : 'No autorizado para eliminar'; setEnabled(btnDelete, canDelete); }
+               setEnabled(btnExp, canExp);
+               setEnabled(btnObl, canOblVer === true);
+            } else {
+               if (btnNew) { btnNew.classList.remove('btn-warning'); btnNew.classList.add('btn-success'); btnNew.innerHTML = '<i class="fas fa-plus"></i> Nuevo'; btnNew.title = canCreate ? 'Registrar nueva empresa' : 'No autorizado para crear'; setEnabled(btnNew, canCreate); }
+               setEnabled(btnEdit, false);
+               if (btnDelete) { setEnabled(btnDelete, false); btnDelete.title = 'Selecciona una empresa para eliminar'; }
+               setEnabled(btnExp, false);
+               setEnabled(btnObl, false);
+            }
+            resolve();
+         });
+      }
    }
 
    if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', init);
@@ -791,445 +817,243 @@
 })();
 
 
-// ==================== OBLIGACIONES (Drawer) ====================
+// ==================== OBLIGACIONES (Drawer minimal) ====================
 (function ObligacionesModule() {
-   const toast = window.__emp_toast || ((t, m) => (t === 'error' ? console.error(m) : console.log(m)));
+   var toast = window.__emp_toast || function (t, m) { return (t === 'error' ? console.error(m) : console.log(m)); };
 
-   const openBtn = document.getElementById('emp-btn-oblig');
-   const drawer = document.getElementById('oblig-drawer');
-   const closeBtn = document.getElementById('oblig-close');
-   const lblEmpresa = document.getElementById('oblig-empresa-label');
+   var openBtn = document.getElementById('emp-btn-oblig');
+   var drawer = document.getElementById('oblig-drawer');
+   var closeBtn = document.getElementById('oblig-close');
+   var lblEmpresa = document.getElementById('oblig-empresa-label');
 
-   const inpSearch = document.getElementById('oblig-search');
-   const countCat = document.getElementById('oblig-count-cat');
-   const countAsg = document.getElementById('oblig-count-asg');
-   const btnRefresh = document.getElementById('oblig-refresh');
+   var inpSearch = document.getElementById('oblig-search');
+   var countCat = document.getElementById('oblig-count-cat');
+   var countAsg = document.getElementById('oblig-count-asg');
+   var btnRefresh = document.getElementById('oblig-refresh');
+   var btnSync = document.getElementById('oblig-btn-sync');
 
-   const treeEl = document.getElementById('oblig-tree');
-   const asgTbody = document.getElementById('oblig-asignadas-tbody');
+   var treeEl = document.getElementById('oblig-tree');
 
-   // Form detalle
-   const fId = document.getElementById('oblig-form-id');
-   const fEmpId = document.getElementById('oblig-form-empresa_id');
-   const fOblId = document.getElementById('oblig-form-obligacion_id');
-   const fTitle = document.getElementById('oblig-form-title');
-   const fResumen = document.getElementById('oblig-form-obligacion-resumen');
+   if (!openBtn || !drawer) return;
 
-   const fPer = document.getElementById('oblig-form-periodicidad');
-   const fTipoD = document.getElementById('oblig-form-tipo_dias');
-   const fDia = document.getElementById('oblig-form-dia_venc');
-   const fOff = document.getElementById('oblig-form-offset');
-   const fAct = document.getElementById('oblig-form-activo');
-   const fIni = document.getElementById('oblig-form-inicio');
-   const fFin = document.getElementById('oblig-form-fin');
-   const fResp = document.getElementById('oblig-form-responsable');
-   const fArea = document.getElementById('oblig-form-area');
-   const fNotas = document.getElementById('oblig-form-notas');
+   var _catalogo = [];
+   var _asignadas = [];
+   var _empresaSel = null;
+   var _tree = null;
 
-   const btnAsignar = document.getElementById('oblig-btn-asignar');
-   const btnGuardar = document.getElementById('oblig-btn-guardar');
-   const btnQuitar = document.getElementById('oblig-btn-quitar');
-
-   if (!openBtn || !drawer) return; // no está esta UI en la vista
-
-   // estado
-   let _catalogo = [];
-   let _asignadas = [];
-   let _empresaSel = null;
-   let _tree = null;
-
-   const canPerm = (p) => window.__canPerm ? window.__canPerm(p) : Promise.resolve(false);
+   function canPermLocal(p) {
+      if (typeof window.__emp_canPerm === 'function') return window.__emp_canPerm(p);
+      if (typeof window.__canPerm === 'function') return window.__canPerm(p);
+      return false;
+   }
 
    function openDrawer() {
-      drawer.style.transform = 'translateX(0)';
+      if (drawer && drawer.parentNode !== document.body) { document.body.appendChild(drawer); }
+      var bd = document.querySelector('.oblig-backdrop');
+      if (!bd) {
+         bd = document.createElement('div');
+         bd.className = 'oblig-backdrop';
+         bd.addEventListener('click', closeDrawer);
+         document.body.appendChild(bd);
+      }
+      drawer.classList.add('open');
       drawer.setAttribute('aria-hidden', 'false');
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
    }
    function closeDrawer() {
-      drawer.style.transform = 'translateX(100%)';
+      drawer.classList.remove('open');
       drawer.setAttribute('aria-hidden', 'true');
+      var bd = document.querySelector('.oblig-backdrop');
+      if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
    }
-   closeBtn?.addEventListener('click', closeDrawer);
+   if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
    document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && drawer.getAttribute('aria-hidden') === 'false') closeDrawer();
    });
 
-   // selects de responsable / área usando catálogos globales o fallback
-   async function ensureFormCatalogs() {
-      const fillSelect = window.__emp_fillSelect;
-      let areas = window.__emp_areas;
-      let jefes = window.__emp_jefes;
-      if (!areas || !jefes) {
-         try {
-            const [jAreas, jJefes] = await Promise.all([
-               Api.get('/api/v1/catalogos/areas'),
-               Api.get('/api/v1/catalogos/jefes'),
-            ]);
-            areas = jAreas?.data || [];
-            jefes = jJefes?.data || [];
-         } catch { areas = []; jefes = []; }
-      }
-      if (typeof fillSelect === 'function') {
-         fillSelect(fResp, jefes, 'id', 'nombre', { includeEmpty: true, emptyText: '(sin responsable)' });
-         fillSelect(fArea, areas, 'id', 'nombre', { includeEmpty: true, emptyText: '(sin área)' });
-      }
+   function loadCatalogo() {
+      if (_catalogo.length) return Promise.resolve(_catalogo);
+      try { if (window.AppLoader && AppLoader.show) AppLoader.show('Cargando catálogo de obligaciones…'); } catch (e) { }
+      return Api.get('/api/v1/catalogos/obligaciones')
+         .then(function (j) {
+            _catalogo = (j && j.data) ? j.data : [];
+            if (countCat) countCat.textContent = String(_catalogo.length);
+            return _catalogo;
+         })
+         .catch(function (err) { toast('error', 'No se pudo cargar el catálogo de obligaciones'); return _catalogo; })
+         .finally(function () { try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { } });
    }
 
-   async function loadCatalogo() {
-      if (_catalogo.length) return _catalogo;
-      try {
-         AppLoader?.show('Cargando catálogo de obligaciones…');
-         const j = await Api.get('/api/v1/catalogos/obligaciones');
-         _catalogo = j?.data || [];
-         if (countCat) countCat.textContent = String(_catalogo.length);
-      } catch (err) {
-         toast('error', 'No se pudo cargar el catálogo de obligaciones');
-         console.error(err);
-      } finally {
-         AppLoader?.hide();
-      }
-      return _catalogo;
-   }
-   async function loadAsignadas(empresaId) {
-      try {
-         AppLoader?.show('Cargando obligaciones asignadas…');
-         const j = await Api.get('/api/v1/empresas/obligaciones?empresa_id=' + encodeURIComponent(empresaId));
-         _asignadas = j?.data || [];
-         if (countAsg) countAsg.textContent = String(_asignadas.length);
-         renderAsignadas();
-         markAssignedOnTree();
-      } catch (err) {
-         toast('error', 'No se pudieron cargar las asignadas');
-         console.error(err);
-      } finally {
-         AppLoader?.hide();
-      }
+   function loadAsignadas(empresaId) {
+      try { if (window.AppLoader && AppLoader.show) AppLoader.show('Cargando obligaciones asignadas…'); } catch (e) { }
+      return Api.get('/api/v1/empresas/obligaciones?empresa_id=' + encodeURIComponent(empresaId))
+         .then(function (j) {
+            _asignadas = (j && j.data) ? j.data : [];
+            if (countAsg) countAsg.textContent = String(_asignadas.length);
+            //renderAsignadas();
+            markAssignedOnTree();
+         })
+         .catch(function (err) { toast('error', 'No se pudieron cargar las asignadas'); })
+         .finally(function () { try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { } });
    }
 
    function groupByOrganismo(items) {
-      const map = new Map();
-      for (const it of items) {
-         const org = (it.organismo || 'OTROS').toString();
-         if (!map.has(org)) map.set(org, []);
-         map.get(org).push(it);
+      var map = {}, res = [];
+      for (var i = 0; i < items.length; i++) {
+         var org = (items[i].organismo || 'OTROS').toString();
+         if (!map[org]) map[org] = [];
+         map[org].push(items[i]);
       }
-      return map;
+      for (var k in map) if (Object.prototype.hasOwnProperty.call(map, k)) res.push([k, map[k]]);
+      return res;
    }
+
    function buildTreeSource(items) {
-      const byOrg = groupByOrganismo(items);
-      const res = [];
-      for (const [org, list] of byOrg.entries()) {
+      var byOrg = groupByOrganismo(items);
+      var res = [];
+      for (var i = 0; i < byOrg.length; i++) {
+         var org = byOrg[i][0];
+         var list = byOrg[i][1];
          res.push({
             title: org,
             folder: true,
             expanded: false,
-            extraClasses: 'text-info',
-            children: list.map(o => ({
-               key: String(o.id),
-               title: `${o.descripcion} <span class="badge bg-secondary ms-2">${o.clave}</span>${o.activo ? '' : ' <span class="badge bg-danger ms-1">inactiva</span>'}`,
-               tooltip: `${o.organismo || ''} • ${o.clave}`,
-               extraClasses: o.activo ? '' : 'text-muted',
-               data: o
-            }))
+            checkbox: true,
+            select: false,
+            unselectable: false,
+            children: list.map(function (o) {
+               return {
+                  key: String(o.id),
+                  title: o.descripcion + ' <span class="badge bg-secondary ms-2">' + o.clave + '</span>' + (o.activo ? '' : ' <span class="badge bg-danger ms-1">inactiva</span>'),
+                  tooltip: (o.organismo || '') + ' • ' + o.clave,
+                  extraClasses: o.activo ? '' : 'text-muted',
+                  data: o,
+                  checkbox: true
+               };
+            })
          });
       }
-      return res.sort((a, b) => a.title.localeCompare(b.title));
+      return res.sort(function (a, b) { return a.title.localeCompare(b.title); });
    }
+
    function initTree() {
-      if (!window.jQuery || !jQuery.fn.fancytree) {
-         console.warn('FancyTree no disponible');
-         return;
-      }
+      if (!window.jQuery || !jQuery.fn.fancytree) { console.warn('FancyTree no disponible'); return; }
+      // destruye solo si ya estaba inicializado
+      try { if (jQuery(treeEl).data('ui-fancytree')) jQuery(treeEl).fancytree('destroy'); } catch (e) { }
       jQuery(treeEl).fancytree({
-         extensions: ['filter'],
+         extensions: ['filter', 'glyph', 'wide'],
          quicksearch: true,
+         checkbox: true,
+         selectMode: 3,
          filter: { autoExpand: true, highlight: true, mode: 'hide' },
          source: buildTreeSource(_catalogo),
-         activate: (ev, data) => {
-            const node = data.node;
-            if (!node || node.folder) return;
-            const obl = node.data;
-            const empresaId = _empresaSel?.id;
-            if (!empresaId) return;
-
-            const asg = _asignadas.find(x => x.obligacion_id === obl.id);
-            if (asg) {
-               fillFormFromAsignada(asg);
-               modeEdit();
-            } else {
-               fillFormForNew(empresaId, obl);
-               modeCreate();
+         // cascada inmediata en folders
+         select: function (ev, data) {
+            var node = data.node;
+            if (node.folder) {
+               node.setExpanded(true);
+               node.visit(function (n) { if (!n.folder) n.setSelected(node.isSelected()); });
             }
          }
       });
-      // obtener instancia con API nueva (sin warning)
-      _tree = $.ui.fancytree.getTree(treeEl);
+      _tree = jQuery.ui.fancytree.getTree(treeEl);
    }
 
    function markAssignedOnTree() {
       if (!_tree) return;
-      const assignedIds = new Set(_asignadas.map(x => String(x.obligacion_id)));
+      var assignedIds = {};
+      for (var i = 0; i < _asignadas.length; i++) assignedIds[String(_asignadas[i].obligacion_id)] = true;
 
-      // ANTES llamábamos _tree.visit(...);  -> ahora visitamos desde la raíz:
-      const root = _tree.getRootNode();
-      root.visit(node => {
-         if (node.folder) return;
-         node.extraClasses = assignedIds.has(node.key)
-            ? 'fw-bold'
-            : (node.data?.activo ? '' : 'text-muted');
-         node.renderTitle();
+      var root = _tree.getRootNode();
+      root.visit(function (node) {
+         if (node.folder) {
+            var all = true, any = false;
+            node.children && node.children.forEach(function (c) {
+               if (c.folder) return;
+               var sel = !!assignedIds[c.key];
+               if (sel) any = true;
+               if (!sel) all = false;
+               c.setSelected(sel);
+            });
+            if (node.children && node.children.length) node.setSelected(all ? true : false);
+         } else {
+            node.setSelected(!!assignedIds[node.key]);
+            node.renderTitle();
+         }
       });
    }
 
    function filterTree(text) {
       if (!_tree) return;
-      const match = text?.trim();
+      var match = text ? String(text).trim() : '';
       if (!match) {
          _tree.clearFilter();
-         _tree.visit(n => n.setExpanded(false));
+         _tree.visit(function (n) { n.setExpanded(false); });
          return;
       }
-      const re = new RegExp(match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-      _tree.filterNodes((node) => {
+      var re = new RegExp(match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      _tree.filterNodes(function (node) {
          if (node.folder) return re.test(node.title);
-         const d = node.data || {};
+         var d = node.data || {};
          return re.test(d.clave || '') || re.test(d.descripcion || '') || re.test(node.title || '');
       }, { autoExpand: true });
    }
-   inpSearch?.addEventListener('input', (e) => filterTree(e.target.value || ''));
+   if (inpSearch) inpSearch.addEventListener('input', function (e) { filterTree(e.target.value || ''); });
 
-   function renderAsignadas() {
-      if (!asgTbody) return;
-      asgTbody.innerHTML = '';
-      if (!_asignadas.length) {
-         const tr = document.createElement('tr');
-         tr.innerHTML = `<td colspan="3" class="text-center text-muted small py-3">Sin obligaciones asignadas</td>`;
-         asgTbody.appendChild(tr);
-         return;
-      }
-      for (const r of _asignadas) {
-         const tr = document.createElement('tr');
-         const per = r.periodicidad || '';
-         const tag = r.activo ? '<span class="badge bg-success ms-1">activa</span>' : '<span class="badge bg-secondary ms-1">inactiva</span>';
-         tr.innerHTML = `
-        <td>
-          <div class="small fw-bold">${r.obligacion?.descripcion || ''}</div>
-          <div class="text-muted small">${r.obligacion?.organismo || ''} • <code>${r.obligacion?.clave || ''}</code> ${tag}</div>
-        </td>
-        <td>${per}</td>
-        <td class="text-end">
-          <button class="btn btn-xs btn-outline-light" data-act="pick" title="Editar"><i class="fas fa-pen"></i></button>
-        </td>`;
-         tr.querySelector('[data-act="pick"]')?.addEventListener('click', () => {
-            fillFormFromAsignada(r);
-            modeEdit();
-            if (_tree) {
-               const node = _tree.getNodeByKey(String(r.obligacion_id));
-               node?.makeVisible();
-               node?.setActive();
-            }
-         });
-         asgTbody.appendChild(tr);
-      }
-   }
 
-   function modeCreate() {
-      fTitle.textContent = 'Asignar obligación';
-      fId.value = '';
-      btnAsignar.style.display = '';
-      btnGuardar.style.display = 'none';
-      btnQuitar.style.display = 'none';
-      applyGates();
-   }
-   function modeEdit() {
-      fTitle.textContent = 'Editar asignación';
-      btnAsignar.style.display = 'none';
-      btnGuardar.style.display = '';
-      btnQuitar.style.display = '';
-      applyGates();
-   }
-   function fillFormForNew(empresaId, obl) {
-      fEmpId.value = empresaId;
-      fOblId.value = obl.id;
-      fResumen.innerHTML = `${obl.descripcion} <span class="badge bg-secondary ms-2">${obl.clave}</span> <span class="text-muted">• ${obl.organismo || '—'}</span>`;
-      fPer.value = 'MENSUAL';
-      fTipoD.value = 'NATURALES';
-      fDia.value = '';
-      fOff.value = '0';
-      fAct.value = '1';
-      const today = new Date();
-      fIni.value = today.toISOString().slice(0, 10);
-      fFin.value = '';
-      fResp.value = '';
-      fArea.value = '';
-      fNotas.value = '';
-   }
-   function fillFormFromAsignada(asg) {
-      fId.value = asg.id || '';
-      fEmpId.value = asg.empresa_id || '';
-      fOblId.value = asg.obligacion_id || '';
-      const o = asg.obligacion || {};
-      fResumen.innerHTML = `${o.descripcion || ''} <span class="badge bg-secondary ms-2">${o.clave || ''}</span> <span class="text-muted">• ${o.organismo || '—'}</span>`;
+   // Guardar selección (sync)
+   if (btnSync) {
+      btnSync.addEventListener('click', function () {
+         if (!_empresaSel || !_empresaSel.id) { toast('warning', 'Selecciona una empresa'); return; }
+         var can = canPermLocal('empresa.obligacion.editar') || canPermLocal('empresa.obligacion.asignar') || canPermLocal('empresa.obligacion.borrar');
+         if (!can) { toast('error', 'No tienes permisos para guardar selección'); return; }
+         if (!_tree) { toast('warning', 'Árbol no inicializado'); return; }
 
-      fPer.value = asg.periodicidad || 'MENSUAL';
-      fTipoD.value = asg.tipo_dias || 'NATURALES';
-      fDia.value = (asg.dia_vencimiento ?? '') === null ? '' : String(asg.dia_vencimiento);
-      fOff.value = String(asg.offset_dias ?? 0);
-      fAct.value = String(asg.activo ? 1 : 0);
-      fIni.value = asg.fecha_inicio || '';
-      fFin.value = asg.fecha_fin || '';
-      fResp.value = asg.responsable_id ? String(asg.responsable_id) : '';
-      fArea.value = asg.area_id ? String(asg.area_id) : '';
-      fNotas.value = asg.notas || '';
-   }
+         var selected = [];
+         _tree.getRootNode().visit(function (n) { if (!n.folder && n.isSelected()) selected.push(parseInt(n.key, 10)); });
 
-   function validateForm(forCreate) {
-      const empresaId = parseInt(fEmpId.value || '0', 10);
-      const oblId = parseInt(fOblId.value || '0', 10);
-      const per = fPer.value;
-      const tipoD = fTipoD.value;
-      const dia = fDia.value ? parseInt(fDia.value, 10) : null;
-      const off = fOff.value ? parseInt(fOff.value, 10) : 0;
-      const ini = fIni.value || '';
-      const fin = fFin.value || '';
-
-      if (empresaId <= 0 || oblId <= 0) { toast('warning', 'Empresa y obligación son requeridos'); return null; }
-      if (!ini) { toast('warning', 'Fecha inicio es requerida'); return null; }
-      if (fin && fin < ini) { toast('warning', 'Fecha fin no puede ser menor que inicio'); return null; }
-      if (per !== 'EVENTUAL') {
-         if (!dia || dia < 1 || dia > 31) { toast('warning', 'Día de vencimiento debe estar entre 1 y 31'); return null; }
-      }
-      const payload = {
-         empresa_id: empresaId,
-         obligacion_id: oblId,
-         periodicidad: per,
-         tipo_dias: tipoD,
-         dia_vencimiento: per === 'EVENTUAL' ? null : dia,
-         offset_dias: off ?? 0,
-         fecha_inicio: ini,
-         fecha_fin: fin || null,
-         responsable_id: fResp.value ? parseInt(fResp.value, 10) : null,
-         area_id: fArea.value ? parseInt(fArea.value, 10) : null,
-         activo: fAct.value ? parseInt(fAct.value, 10) : 1,
-         notas: (fNotas.value || '').trim() || null
-      };
-      if (!forCreate) {
-         const id = parseInt(fId.value || '0', 10);
-         if (!id) { toast('warning', 'ID de asignación inválido'); return null; }
-         payload.id = id;
-      }
-      return payload;
-   }
-
-   btnAsignar?.addEventListener('click', async () => {
-      const can = await canPerm('empresa.obligacion.asignar');
-      if (!can) { toast('error', 'No tienes permiso para asignar'); return; }
-      const data = validateForm(true);
-      if (!data) return;
-      try {
-         AppLoader?.show('Asignando obligación…');
-         const j = await Api.post('/api/v1/empresas/obligaciones', data);
-         if (j?.ok) {
-            toast('success', 'Obligación asignada');
-            await loadAsignadas(data.empresa_id);
-            const found = _asignadas.find(x => x.obligacion_id === data.obligacion_id);
-            if (found) fillFormFromAsignada(found);
-            modeEdit();
-         } else {
-            toast('warning', 'No se pudo asignar la obligación');
-         }
-      } catch (err) {
-         console.error(err);
-         toast('error', err?.message || 'Error al asignar');
-      } finally {
-         AppLoader?.hide();
-      }
-   });
-
-   btnGuardar?.addEventListener('click', async () => {
-      const can = await canPerm('empresa.obligacion.editar');
-      if (!can) { toast('error', 'No tienes permiso para editar'); return; }
-      const data = validateForm(false);
-      if (!data) return;
-      try {
-         AppLoader?.show('Guardando cambios…');
-         const j = await Api.put('/api/v1/empresas/obligaciones', data);
-         if (j?.ok) {
-            toast('success', 'Asignación actualizada');
-            await loadAsignadas(data.empresa_id);
-         } else {
-            toast('warning', 'No se pudo actualizar la asignación');
-         }
-      } catch (err) {
-         console.error(err);
-         toast('error', err?.message || 'Error al guardar');
-      } finally {
-         AppLoader?.hide();
-      }
-   });
-
-   btnQuitar?.addEventListener('click', async () => {
-      const can = await canPerm('empresa.obligacion.borrar');
-      if (!can) { toast('error', 'No tienes permiso para desasignar'); return; }
-      const id = parseInt(fId.value || '0', 10);
-      const empId = parseInt(fEmpId.value || '0', 10);
-      if (!id || !empId) return;
-      if (!window.confirm('¿Desasignar esta obligación?')) return;
-      try {
-         AppLoader?.show('Desasignando…');
-         const j = await Api.del('/api/v1/empresas/obligaciones?id=' + encodeURIComponent(id));
-         if (j?.ok) {
-            toast('success', 'Obligación desasignada');
-            await loadAsignadas(empId);
-            const node = _tree?.getActiveNode();
-            if (node && !node.folder) {
-               fillFormForNew(empId, node.data);
-               modeCreate();
+         try { if (window.AppLoader && AppLoader.show) AppLoader.show('Guardando selección…'); } catch (e) { }
+         Api.post('/api/v1/empresas/obligaciones', {
+            empresa_id: _empresaSel.id,
+            obligacion_ids: selected
+         }).then(function (j) {
+            if (j && j.ok) {
+               toast('success', 'Selección guardada');
+               return loadAsignadas(_empresaSel.id);
             } else {
-               fId.value = ''; fOblId.value = ''; fResumen.textContent = '—';
-               modeCreate();
+               toast('warning', (j && j.error && j.error.message) || 'No se pudo guardar la selección');
             }
-         } else {
-            toast('warning', 'No se pudo desasignar');
-         }
-      } catch (err) {
-         console.error(err);
-         toast('error', err?.message || 'Error al desasignar');
-      } finally {
-         AppLoader?.hide();
-      }
-   });
+         }).catch(function (err) {
+            console.error(err);
+            toast('error', (err && err.message) || 'Error al guardar selección');
+         }).finally(function () { try { if (window.AppLoader && AppLoader.hide) AppLoader.hide(); } catch (e) { } });
+      });
+   }
 
-   btnRefresh?.addEventListener('click', async () => {
-      if (!_empresaSel?.id) return;
-      await loadAsignadas(_empresaSel.id);
+   if (btnRefresh) btnRefresh.addEventListener('click', function () {
+      if (!_empresaSel || !_empresaSel.id) return;
+      loadAsignadas(_empresaSel.id);
    });
 
    // Abrir drawer desde toolbar
-   openBtn.addEventListener('click', async () => {
-      const getSel = window.__emp_getSelectedRow;
-      const row = typeof getSel === 'function' ? getSel() : null;
+   if (openBtn) openBtn.addEventListener('click', function () {
+      var getSel = window.__emp_getSelected;
+      var row = (typeof getSel === 'function') ? getSel() : null;
       if (!row) { toast('warning', 'Selecciona una empresa'); return; }
 
-      const canVer = await canPerm('empresa.obligacion.ver');
+      var canVer = canPermLocal('empresa.obligacion.ver');
       if (!canVer) { toast('error', 'No tienes permiso para ver obligaciones'); return; }
 
       _empresaSel = row;
-      if (lblEmpresa) lblEmpresa.textContent = `${row.nombre || '(Sin nombre)'} • ID ${row.id}`;
-      fEmpId.value = String(row.id);
+      if (lblEmpresa) lblEmpresa.textContent = (row.nombre || '(Sin nombre)') + ' • ID ' + row.id;
 
-      await ensureFormCatalogs();
       openDrawer();
-
-      await loadCatalogo();
-      if (!_tree) initTree(); else {
-         _tree.reload(buildTreeSource(_catalogo));
-      }
-      await loadAsignadas(row.id);
-
-      applyGates();
+      loadCatalogo()
+         .then(function () { initTree(); })
+         .then(function () { return loadAsignadas(row.id); })
+         .then(function () { if (window.__applyGates) window.__applyGates(drawer); });
    });
-
-   function applyGates() {
-      if (window.__applyGates) window.__applyGates(drawer);
-   }
 })();

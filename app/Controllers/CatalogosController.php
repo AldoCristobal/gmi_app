@@ -78,5 +78,37 @@ final class CatalogosController
             500
          );
       }
-}
+   }
+
+   public function revisionTipos(\App\Http\Request $req): void
+   {
+      try {
+         $db = \App\Support\DB::pdo();
+
+         $q = trim((string)($req->get['q'] ?? ''));                 // filtro opcional por texto
+         $incluyeInactivos = (string)($req->get['inactivos'] ?? '') === '1';
+
+         $where = $incluyeInactivos ? '1=1' : 'rt.activo = 1';
+         $params = [];
+
+         if ($q !== '') {
+            $where .= ' AND (rt.nombre LIKE :q OR rt.clave LIKE :q)';
+            $params[':q'] = '%' . $q . '%';
+         }
+
+         $st = $db->prepare("
+         SELECT rt.id, rt.nombre, rt.clave
+         FROM revision_tipo rt
+         WHERE {$where}
+         ORDER BY rt.nombre ASC
+      ");
+         $st->execute($params);
+         $rows = $st->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+
+         \App\Http\Response::json(['ok' => true, 'data' => $rows], 200);
+      } catch (\Throwable $e) {
+         error_log($e->getMessage());
+         \App\Http\Response::json(['ok' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'No se pudo obtener revision_tipos']], 500);
+      }
+   }
 }

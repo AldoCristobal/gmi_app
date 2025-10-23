@@ -9,6 +9,9 @@ use App\Controllers\EmpresaController;
 use App\Controllers\CatalogosController;
 use App\Controllers\PermisoController;
 use App\Controllers\EmpresaObligacionController;
+use App\Controllers\RevisionController;
+use App\Controllers\RevisionDocumentoController;
+use App\Controllers\UploadTempController;
 
 
 use App\Http\Middlewares\AuthMiddleware;
@@ -24,6 +27,9 @@ $per = new PermisoController();
 $men = new MenuController();
 $cat = new CatalogosController();
 $empObl = new EmpresaObligacionController();
+$rev   = new RevisionController();
+$revDoc= new RevisionDocumentoController();
+$uplTmp= new UploadTempController();
 
 
 // Login (NO Auth, NO CSRF)
@@ -359,4 +365,107 @@ $router->delete('/api/v1/empresas/obligaciones', [
    new RbacMiddleware(['empresa.obligacion.borrar']),
    new ScopeMiddleware(),
    [$empObl, 'destroy']
+]);
+
+/** ===================== REVISIÓNES ===================== **/
+
+$router->get('/api/v1/revisiones', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['revisiones.ver']),
+   new ScopeMiddleware(),
+   [$rev, 'index']
+]);
+
+$router->get('/api/v1/revisiones/show', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['revisiones.ver']),
+   new ScopeMiddleware(),
+   [$rev, 'show']
+]);
+
+$router->post('/api/v1/revisiones', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['revisiones.crear']),
+   new ScopeMiddleware(),
+   [$rev, 'store']
+]);
+
+$router->put('/api/v1/revisiones', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['revisiones.editar']),
+   new ScopeMiddleware(),
+   [$rev, 'update']
+]);
+
+$router->patch('/api/v1/revisiones/estatus', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['revisiones.cambiar_estatus']),
+   new ScopeMiddleware(),
+   [$rev, 'estatus']
+]);
+
+$router->delete('/api/v1/revisiones', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['revisiones.borrar']),
+   new ScopeMiddleware(),
+   [$rev, 'destroy']
+]);
+
+/** =============== DOCUMENTOS DE REVISIÓN =============== **/
+
+$router->get('/api/v1/revisiones/documentos', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['revisiones.ver']),
+   new ScopeMiddleware(),
+   [$revDoc, 'list']
+]);
+
+$router->post('/api/v1/revisiones/documentos', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['revisiones.subir_archivo']),
+   new ScopeMiddleware(),
+   [$revDoc, 'upload']
+]);
+
+$router->get('/api/v1/revisiones/documentos/download', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['revisiones.descargar_archivo']),
+   new ScopeMiddleware(),
+   [$revDoc, 'download']
+]);
+
+$router->delete('/api/v1/revisiones/documentos', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['revisiones.editar']),
+   new ScopeMiddleware(),
+   [$revDoc, 'delete']
+]);
+
+$router->patch('/api/v1/revisiones/documentos/inicial', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['revisiones.editar']),
+   new ScopeMiddleware(),
+   [$revDoc, 'replaceInitial']
+]);
+
+/** =============== SUBIDA TEMPORAL (EVIDENCIA INICIAL) =============== **/
+
+$router->post('/api/v1/uploads/temp', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   [$uplTmp, 'store']
+]);
+
+/** =============== CATÁLOGO: revision_tipo =============== **/
+
+$router->get('/api/v1/catalogos/revision_tipos', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   [new \App\Controllers\CatalogosController(), 'revisionTipos']
 ]);

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Http\Request;
-use App\Http\Response;
 use App\Services\EmpresaObligacionService;
 
 final class EmpresaObligacionController
@@ -15,74 +13,81 @@ final class EmpresaObligacionController
    /**
     * GET /api/v1/empresas/obligaciones?empresa_id=123
     */
-   public function index(Request $req): void
+   public function index($req): void
    {
-      $empresaId = (int)($req->get['empresa_id'] ?? 0);
+      $empresaId = (int)($_GET['empresa_id'] ?? 0);
       if ($empresaId <= 0) {
-         Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => 'empresa_id requerido']], 400);
+         \App\Http\Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => 'empresa_id requerido']], 400);
          return;
       }
-
       $out = $this->svc->listarPorEmpresa($empresaId);
-      Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
+      \App\Http\Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
    }
 
    /**
     * POST /api/v1/empresas/obligaciones
-    * body: {
-    *   empresa_id, obligacion_id, periodicidad, tipo_dias,
-    *   dia_vencimiento (nullable), offset_dias, fecha_inicio, fecha_fin (nullable),
-    *   responsable_id (nullable), area_id (nullable), activo (1/0), notas (nullable)
-    * }
+    * 1) Alta individual (form detalle): body con campos de una asignación
+    * 2) Sincronización masiva (árbol): body { empresa_id, obligacion_ids: number[] }
     */
-   public function store(Request $req): void
+   public function store($req): void
    {
-      $in = $this->json($req);
+      $raw = file_get_contents('php://input') ?: '';
+      $in  = json_decode($raw, true);
+      if (!is_array($in)) $in = $_POST ?? [];
+
+      // MODO SINCRONIZACIÓN (checkboxes)
+      if (isset($in['empresa_id']) && isset($in['obligacion_ids']) && is_array($in['obligacion_ids'])) {
+         $empresaId = (int)$in['empresa_id'];
+         $ids = array_values(array_unique(array_map('intval', $in['obligacion_ids'])));
+         if ($empresaId <= 0) {
+            \App\Http\Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => 'empresa_id requerido']], 400);
+            return;
+         }
+         $out = $this->svc->syncAsignaciones($empresaId, $ids);
+         \App\Http\Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
+         return;
+      }
+
+      // MODO ALTA INDIVIDUAL (form detalle)
       $out = $this->svc->asignar($in);
-      Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
+      \App\Http\Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
    }
 
    /**
     * PUT /api/v1/empresas/obligaciones
-    * body: {
-    *   id, empresa_id, obligacion_id, ... (mismos campos que store)
-    * }
+    * body: { id, ...campos }
     */
-   public function update(Request $req): void
+   public function update($req): void
    {
-      $in = $this->json($req);
+      $raw = file_get_contents('php://input') ?: '';
+      $in  = json_decode($raw, true);
+      if (!is_array($in)) $in = $_POST ?? [];
+
       $id = (int)($in['id'] ?? 0);
       if ($id <= 0) {
-         Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => 'id requerido']], 400);
+         \App\Http\Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => 'id requerido']], 400);
          return;
       }
       $out = $this->svc->actualizar($id, $in);
-      Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
+      \App\Http\Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
    }
 
    /**
     * DELETE /api/v1/empresas/obligaciones?id=999
     */
-   public function destroy(Request $req): void
+   public function destroy($req): void
    {
-      $id = (int)($req->get['id'] ?? 0);
+      $id = (int)($_GET['id'] ?? 0);
       if ($id <= 0) {
-         // permite también en JSON
-         $in = $this->json($req);
-         $id = (int)($in['id'] ?? 0);
+         $raw = file_get_contents('php://input') ?: '';
+         $j = json_decode($raw, true);
+         if (is_array($j)) $id = (int)($j['id'] ?? 0);
       }
       if ($id <= 0) {
-         Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => 'id requerido']], 400);
+         \App\Http\Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => 'id requerido']], 400);
          return;
       }
       $out = $this->svc->desasignar($id);
-      Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
-   }
-
-   private function json(Request $r): array
-   {
-      $raw = file_get_contents('php://input') ?: '';
-      $j = json_decode($raw, true);
-      return is_array($j) ? $j : $r->post;
+      \App\Http\Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
    }
 }
