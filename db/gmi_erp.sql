@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: localhost
--- Tiempo de generación: 10-10-2025 a las 03:28:26
+-- Tiempo de generación: 23-10-2025 a las 16:54:00
 -- Versión del servidor: 8.0.36
 -- Versión de PHP: 8.3.2
 
@@ -20,6 +20,26 @@ SET time_zone = "+00:00";
 --
 -- Base de datos: `gmi_erp`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `app_parametro`
+--
+
+CREATE TABLE `app_parametro` (
+  `k` varchar(120) NOT NULL,
+  `v` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Volcado de datos para la tabla `app_parametro`
+--
+
+INSERT INTO `app_parametro` (`k`, `v`) VALUES
+('revisiones.alerta_dias', '5'),
+('revisiones.hora_cron', '08:00'),
+('zona_horaria_sistema', 'America/Mexico_City');
 
 -- --------------------------------------------------------
 
@@ -110,9 +130,10 @@ CREATE TABLE `empresa` (
 --
 
 INSERT INTO `empresa` (`id`, `cliente_grupo`, `nombre`, `rfc`, `contrato_servicios`, `nombre_facturacion`, `telefono_facturacion`, `correo_facturacion`, `tipo_regimen`, `actividad_principal`, `estatus_domicilio`, `origen_captura`, `constancia_doc_id`, `tipo_persona`, `regimenes`, `responsable_id`, `area_id`, `activo`, `creado_en`, `actualizado_en`) VALUES
-(1, 'Cliente Demo', 'Empresa Demo SA de CV', 'DEM010101AA1', 'txt', 'txt', '123456789', 'txt@txt.com', 'asdas', 'asdasd', 'LOCALIZADO', NULL, NULL, 'MORAL', '[\"601\"]', 2, 4, 1, '2025-09-28 19:59:41', '2025-10-07 00:09:11'),
+(1, 'Cliente Demo', 'Empresa Demo SA de CV', 'DEM010101AA1', 'txt', 'txt', '123456789', 'txt@txt.com', 'asdas', 'asdasd', 'LOCALIZADO', NULL, NULL, 'MORAL', '[\"601\"]', 2, 4, 0, '2025-09-28 19:59:41', '2025-10-22 17:56:36'),
 (2, 'Cliente 1', 'Empresa 1', 'CIAA960628PE7', 'asd', 'asdasd', 'asdasd', 'asdasd', 'asdasd', 'asdasd', 'LOCALIZADO', NULL, NULL, 'MORAL', NULL, 4, 2, 1, '2025-10-06 23:46:43', NULL),
-(3, 'Cliente 1', 'Empresa 1', 'CIAA960628PE8', 'wrw', 'erwerewe', 'rwerwe', 'rwer', 'werwe', 'werwe', 'NO_LOCALIZADO', NULL, NULL, 'FISICA', NULL, 2, 4, 1, '2025-10-08 00:53:54', NULL);
+(3, 'Cliente 1', 'Empresa 1', 'CIAA960628PE8', 'wrw', 'erwerewe', 'rwerwe', 'rwer', 'werwe', 'werwe', 'NO_LOCALIZADO', NULL, NULL, 'MORAL', NULL, 2, 4, 1, '2025-10-08 00:53:54', '2025-10-20 19:15:30'),
+(4, 'Clinte teeest', 'test', 'CIAA960628PE2', 'Seervicios', 'dfasdf', 'fasd', 'sdfasd', 'asdfa', 'asdf', 'NO_LOCALIZADO', NULL, NULL, 'MORAL', NULL, 4, 4, 1, '2025-10-21 14:54:52', '2025-10-22 17:56:46');
 
 -- --------------------------------------------------------
 
@@ -139,14 +160,15 @@ CREATE TABLE `empresa_documento` (
 --
 
 INSERT INTO `empresa_documento` (`id`, `empresa_id`, `tipo_id`, `version`, `archivo_nombre`, `archivo_path`, `mime`, `size_bytes`, `metadata`, `subido_por`, `subido_en`) VALUES
-(1, 1, 3, 1, '14221633.docx', '/uploads/empresas/1/acta_constitutiva/19dd2d4365a502f553143963a8e1f29a.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 475049, NULL, 2, '2025-10-07 23:26:18'),
-(2, 1, 9, 1, '14221633.pdf', '/uploads/empresas/1/asamblea_ordinaria/9c4bbaed811d95bae6735384b31c3648.pdf', 'application/pdf', 391227, NULL, 2, '2025-10-07 23:26:18'),
-(3, 1, 6, 1, '14221633_.docx', '/uploads/empresas/1/comprobante_domicilio/bb5377e392e9947d36f3ff796eec00f3.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 688788, NULL, 2, '2025-10-07 23:26:18'),
-(4, 1, 11, 1, '14221633_.pdf', '/uploads/empresas/1/socios/77a25a039c6d5d39fcb7255db0b91aa5.pdf', 'application/pdf', 295885, NULL, 2, '2025-10-07 23:26:18'),
-(5, 1, 10, 1, 'cedula conalep.pdf', '/uploads/empresas/1/asamblea_extraordinaria/5d986c09b81214071e1e1a9ec02ff3ad.pdf', 'application/pdf', 176363, NULL, 2, '2025-10-07 23:35:39'),
-(6, 1, 4, 1, 'comprobanteNSS.pdf', '/uploads/empresas/1/cif/c973ad1f1f6d0f603bd012702509ae89.pdf', 'application/pdf', 69995, NULL, 2, '2025-10-07 23:35:39'),
-(7, 3, 9, 1, 'tarjetaNSS.pdf', '/uploads/empresas/3/asamblea_ordinaria/6cfcd02641270604b4eb891d9af56f3f.pdf', 'application/pdf', 80259, NULL, 2, '2025-10-08 00:54:19'),
-(8, 3, 9, 2, 'udemy certificado desarrolo web.pdf', '/uploads/empresas/3/asamblea_ordinaria/5f44683ffa0241fc64886f1cc453b483.pdf', 'application/pdf', 238043, NULL, 2, '2025-10-08 00:54:20');
+(9, 4, 3, 1, '14221633.docx', '/uploads/empresas/4/acta_constitutiva/ef57003719a098108c931282be58589b.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 475049, NULL, 2, '2025-10-21 15:34:16'),
+(10, 4, 10, 1, '14221633.pdf', '/uploads/empresas/4/asamblea_extraordinaria/1caab4cdf2f2591c4656066caf8c9753.pdf', 'application/pdf', 391227, NULL, 2, '2025-10-21 15:34:16'),
+(11, 4, 9, 1, '14221633_.docx', '/uploads/empresas/4/asamblea_ordinaria/8f2941d63d3dd849dfa859d364a4bb02.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 688788, NULL, 2, '2025-10-21 15:34:16'),
+(12, 4, 7, 1, 'CV.pdf', '/uploads/empresas/4/aviso_privacidad/2945755120a0c7da57a06e405824ff2a.pdf', 'application/pdf', 172009, NULL, 2, '2025-10-21 16:13:28'),
+(13, 4, 4, 1, 'Doc1.pdf', '/uploads/empresas/4/cif/bf849f271e1369e6277a248b7d5e5330.pdf', 'application/pdf', 369226, NULL, 2, '2025-10-21 16:13:28'),
+(14, 4, 8, 1, 'Doc2.pdf', '/uploads/empresas/4/consiliacion_social/2a47e0d5387b54e8358248972aafeb46.pdf', 'application/pdf', 188199, NULL, 2, '2025-10-21 16:13:28'),
+(15, 3, 3, 1, 'ine mama.pdf', '/uploads/empresas/3/acta_constitutiva/27fa5440efe6e6486da52a9988a96a87.pdf', 'application/pdf', 179525, NULL, 2, '2025-10-21 16:14:31'),
+(16, 3, 10, 1, 'tarjetaNSS.pdf', '/uploads/empresas/3/asamblea_extraordinaria/e98ee3f9181a209a6516872e20182ba9.pdf', 'application/pdf', 80259, NULL, 2, '2025-10-21 16:14:31'),
+(17, 3, 9, 1, 'udemy certificado desarrolo web.pdf', '/uploads/empresas/3/asamblea_ordinaria/4781f2d2795b46d680cdb3cda5fa8d5c.pdf', 'application/pdf', 238043, NULL, 2, '2025-10-21 16:14:31');
 
 -- --------------------------------------------------------
 
@@ -220,7 +242,138 @@ CREATE TABLE `empresa_obligacion` (
 --
 
 INSERT INTO `empresa_obligacion` (`id`, `empresa_id`, `obligacion_id`, `periodicidad`, `tipo_dias`, `dia_vencimiento`, `offset_dias`, `fecha_inicio`, `fecha_fin`, `responsable_id`, `area_id`, `activo`, `creado_en`, `actualizado_en`) VALUES
-(1, 1, 1, 'MENSUAL', 'HABILES', 17, 0, '2025-01-01', NULL, 2, 4, 1, '2025-09-28 19:59:41', NULL);
+(37, 1, 22, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(38, 1, 4, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(39, 1, 19, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(40, 1, 21, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(41, 1, 20, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(42, 1, 23, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(43, 1, 26, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(44, 1, 25, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(45, 1, 24, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(46, 1, 3, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(47, 1, 1, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(48, 1, 10, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(49, 1, 9, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(50, 1, 5, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(51, 1, 11, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(52, 1, 17, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(53, 1, 14, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(54, 1, 13, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(55, 1, 2, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(56, 1, 6, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(57, 1, 8, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(58, 1, 12, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(59, 1, 18, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(60, 1, 15, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(61, 1, 7, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(62, 1, 16, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:25', NULL),
+(98, 1, 51, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(99, 1, 31, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(100, 1, 27, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(101, 1, 28, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(102, 1, 35, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(103, 1, 50, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(104, 1, 41, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(105, 1, 40, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(106, 1, 29, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(107, 1, 37, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(108, 1, 36, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(109, 1, 39, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(110, 1, 32, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(111, 1, 38, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(112, 1, 30, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(113, 1, 49, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(114, 1, 47, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(115, 1, 48, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(116, 1, 46, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(117, 1, 43, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(118, 1, 33, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(119, 1, 45, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(120, 1, 44, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(121, 1, 34, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(122, 1, 42, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 14:46:52', NULL),
+(123, 4, 56, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:34:52', NULL),
+(124, 4, 55, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:34:52', NULL),
+(125, 4, 53, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:34:52', NULL),
+(126, 4, 54, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:34:52', NULL),
+(127, 4, 52, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:34:52', NULL),
+(128, 3, 56, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(129, 3, 55, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(130, 3, 53, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(131, 3, 54, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(132, 3, 52, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(133, 3, 51, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(134, 3, 31, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(135, 3, 27, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(136, 3, 28, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(137, 3, 35, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(138, 3, 50, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(139, 3, 41, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(140, 3, 40, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(141, 3, 29, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(142, 3, 37, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(143, 3, 36, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(144, 3, 39, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(145, 3, 32, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(146, 3, 38, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(147, 3, 30, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(148, 3, 49, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(149, 3, 47, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(150, 3, 48, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(151, 3, 46, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(152, 3, 43, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(153, 3, 33, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(154, 3, 45, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(155, 3, 44, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(156, 3, 34, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(157, 3, 42, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(158, 3, 62, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(159, 3, 65, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(160, 3, 63, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(161, 3, 66, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(162, 3, 64, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(163, 3, 22, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(164, 3, 4, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(165, 3, 19, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(166, 3, 21, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(167, 3, 20, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(168, 3, 23, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(169, 3, 26, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(170, 3, 25, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(171, 3, 24, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(172, 3, 3, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(173, 3, 1, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(174, 3, 10, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(175, 3, 9, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(176, 3, 5, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(177, 3, 11, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(178, 3, 17, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(179, 3, 14, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(180, 3, 13, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(181, 3, 2, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(182, 3, 6, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(183, 3, 8, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(184, 3, 12, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(185, 3, 18, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(186, 3, 15, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(187, 3, 7, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(188, 3, 16, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 15:35:11', NULL),
+(194, 3, 58, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:21', NULL),
+(195, 3, 59, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:21', NULL),
+(196, 3, 61, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:21', NULL),
+(197, 3, 57, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:21', NULL),
+(198, 3, 60, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:21', NULL),
+(199, 1, 62, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:27', NULL),
+(200, 1, 65, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:27', NULL),
+(201, 1, 63, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:27', NULL),
+(202, 1, 66, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:27', NULL),
+(203, 1, 64, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:27', NULL),
+(204, 4, 58, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:36', NULL),
+(205, 4, 59, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:36', NULL),
+(206, 4, 61, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:36', NULL),
+(207, 4, 57, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:36', NULL),
+(208, 4, 60, 'EVENTUAL', 'NATURALES', NULL, 0, '2025-10-21', NULL, NULL, NULL, 1, '2025-10-21 16:12:36', NULL);
 
 -- --------------------------------------------------------
 
@@ -284,15 +437,18 @@ CREATE TABLE `menu` (
 --
 
 INSERT INTO `menu` (`id`, `parent_id`, `etiqueta`, `slug`, `tipo`, `icono`, `vista`, `url_externa`, `target`, `orden`, `namespace`, `visible`, `badge_text`, `badge_variant`, `requiere_permiso`, `created_at`, `updated_at`, `created_by`, `updated_by`, `deleted_at`) VALUES
-(2, NULL, 'Obligaciones', 'obligaciones', 'item', 'fas fa-file-contract', 'obligaciones', NULL, '_self', 2, 'sidebar', 1, NULL, NULL, 'menu.obligaciones', NULL, NULL, NULL, NULL, NULL),
+(2, NULL, 'Obligaciones', 'obligaciones', 'item', 'fas fa-file-contract', 'obligaciones', NULL, '_self', 3, 'sidebar', 1, NULL, NULL, 'menu.obligaciones', NULL, NULL, NULL, NULL, NULL),
 (3, 2, 'Rutinas', 'rutinas', 'item', 'fas fa-calendar-check', 'rutinas', NULL, '_self', 0, 'sidebar', 1, NULL, NULL, 'menu.rutinas', NULL, NULL, NULL, NULL, NULL),
-(4, NULL, 'Seguridad', 'seguridad', 'item', 'fas fa-shield-alt', NULL, NULL, '_self', 1, 'sidebar', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(4, NULL, 'Seguridad', 'seguridad', 'item', 'fas fa-shield-alt', NULL, NULL, '_self', 2, 'sidebar', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (5, 4, 'Usuarios', 'usuarios', 'item', 'fas fa-users', 'admin/usuarios', NULL, '_self', 0, 'sidebar', 1, NULL, NULL, 'admin.usuarios.ver', NULL, NULL, NULL, NULL, NULL),
 (6, 4, 'Roles', 'roles', 'item', 'fas fa-user-tag', 'admin/roles', NULL, '_self', 1, 'sidebar', 1, NULL, NULL, 'admin.roles.ver', NULL, NULL, NULL, NULL, NULL),
 (8, 4, 'Menú', 'men', 'item', 'fas fa-sitemap', 'admin/menu', NULL, '_self', 2, 'sidebar', 1, NULL, NULL, 'admin.menu.ver', NULL, NULL, NULL, NULL, NULL),
-(20, NULL, 'Administrar Empresas', 'admon_empresas', 'item', 'fas fa-building', NULL, NULL, '_self', 0, 'sidebar', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(20, NULL, 'Administrar Empresas', 'admon_empresas', 'item', 'fas fa-building', NULL, NULL, '_self', 1, 'sidebar', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (21, 20, 'Empresas', 'empresas', 'item', 'fas fa-building', 'empresas/', NULL, '_self', 0, 'sidebar', 1, NULL, NULL, 'empresa.ver', NULL, NULL, NULL, NULL, NULL),
-(23, 20, 'Expediente', 'expediente', 'item', 'fas fa-building', 'empresas/expediente', NULL, '_self', 1, 'sidebar', 1, NULL, NULL, 'empresa.expediente', NULL, NULL, NULL, NULL, NULL);
+(23, 20, 'Expediente', 'expediente', 'item', 'fas fa-building', 'empresas/expediente', NULL, '_self', 1, 'sidebar', 1, NULL, NULL, 'empresa.expediente', NULL, NULL, NULL, NULL, NULL),
+(27, NULL, 'Notificaciones', 'notificaciones', 'item', 'fas fa-building', NULL, NULL, '_self', 0, 'sidebar', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(29, 27, 'Nueva revision', 'index', 'item', 'fas fa-building', 'revisiones/', NULL, '_self', 0, 'sidebar', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(30, 27, 'Historial', 'historial', 'item', 'fas fa-building', 'revisiones/historial', NULL, '_self', 1, 'sidebar', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -362,6 +518,9 @@ INSERT INTO `menu_rol` (`menu_id`, `rol_id`) VALUES
 (20, 2),
 (21, 2),
 (23, 2),
+(27, 2),
+(29, 2),
+(30, 2),
 (2, 3),
 (3, 3);
 
@@ -384,9 +543,72 @@ CREATE TABLE `obligacion` (
 --
 
 INSERT INTO `obligacion` (`id`, `clave`, `descripcion`, `organismo`, `activo`) VALUES
-(1, 'ISR_MENSUAL', 'Declaración ISR mensual', 'SAT', 1),
-(2, 'IVA_MENSUAL', 'Declaración IVA mensual', 'SAT', 1),
-(3, 'NOMINA_IMSS', 'Pago IMSS mensual', 'IMSS', 1);
+(1, 'SAT-ISR-PROV', 'ISR Provisional', 'SAT', 1),
+(2, 'SAT-GLOBAL-BANCOS', 'Prueba Global de Bancos', 'SAT', 1),
+(3, 'SAT-ISR-ANUAL', 'ISR Anual', 'SAT', 1),
+(4, 'SAT-RET-ANUAL', 'Constancia de retenciones anuales', 'SAT', 1),
+(5, 'SAT-ISR-SEM', 'ISR Semestral', 'SAT', 1),
+(6, 'SAT-RET-ISR', 'Retención de ISR', 'SAT', 1),
+(7, 'SAT-SUELDOS', 'Sueldos y salarios', 'SAT', 1),
+(8, 'SAT-ISR-ASIMIL', 'Retención ISR asimilables', 'SAT', 1),
+(9, 'SAT-ISR-PROFES', 'ISR ret por Servicios Profesionales / RESICO', 'SAT', 1),
+(10, 'SAT-ISR-ARRENDA', 'ISR ret por arrendamiento', 'SAT', 1),
+(11, 'SAT-IVA-DEF', 'IVA Definitivo', 'SAT', 1),
+(12, 'SAT-RET-IVA', 'Retenciones IVA', 'SAT', 1),
+(13, 'SAT-IEPS-PROV', 'Pago provisional IEPS', 'SAT', 1),
+(14, 'SAT-OPINION', 'Opinión de cumplimiento', 'SAT', 1),
+(15, 'SAT-LISTA69B', 'Revisión lista 69B', 'SAT', 1),
+(16, 'SAT-VISOR-NOM', 'Visor de nóminas', 'SAT', 1),
+(17, 'SAT-MATERIALIDAD', 'Materialidad mensual (proveedores, contratos)', 'SAT', 1),
+(18, 'SAT-BUZON', 'Revisión buzón SAT (cada 3 días)', 'SAT', 1),
+(19, 'SAT-CONTROL-VOL', 'Control volumétrico / Dictamen', 'SAT', 1),
+(20, 'SAT-DICTAMEN-PERIODO', 'Dictamen revisar periodo', 'SAT', 1),
+(21, 'SAT-DICTAMEN-FISCAL', 'Dictamen fiscal Contabilidad electrónica', 'SAT', 1),
+(22, 'SAT-BENEFICIARIO', 'Beneficiario controlador', 'SAT', 1),
+(23, 'SAT-DIOT', 'DIOT', 'SAT', 1),
+(24, 'SAT-IEPS-TRI', 'IEPS Trimestral', 'SAT', 1),
+(25, 'SAT-IEPS-SEM', 'IEPS Semestral', 'SAT', 1),
+(26, 'SAT-IEPS-ANUAL', 'IEPS Anual', 'SAT', 1),
+(27, 'IMSS-CUOTAS', 'Cuotas IMSS', 'IMSS', 1),
+(28, 'IMSS-RCV', 'Cuotas RCV', 'IMSS', 1),
+(29, 'IMSS-INFONAVIT', 'INFONAVIT', 'IMSS', 1),
+(30, 'IMSS-PRT', 'Presentación de PRT', 'IMSS', 1),
+(31, 'IMSS-BUZON', 'Buzón IMSS', 'IMSS', 1),
+(32, 'IMSS-MOD-SAL', 'Modificaciones de salario', 'IMSS', 1),
+(33, 'IMSS-SEMESTRAL', 'Semestral', 'IMSS', 1),
+(34, 'IMSS-SIROC', 'SIROC', 'IMSS', 1),
+(35, 'IMSS-ICSOE-SISUB', 'ICSOE y SISUB', 'IMSS', 1),
+(36, 'IMSS-INEGI-MENSUAL', 'Informativa INEGI Mensual', 'IMSS', 1),
+(37, 'IMSS-INEGI-ANUAL', 'Informativa INEGI Anual', 'IMSS', 1),
+(38, 'IMSS-TRANSFERENCIA', 'Precios de Transferencia', 'IMSS', 1),
+(39, 'IMSS-TRANSPARENCIA', 'Informativa Transparencia', 'IMSS', 1),
+(40, 'IMSS-CEDULAR-MENSUAL', 'Impuesto Cedular Mensual', 'IMSS', 1),
+(41, 'IMSS-CEDULAR-ANUAL', 'Impuesto Cedular Anual', 'IMSS', 1),
+(42, 'IMSS-SITI', 'SITI', 'IMSS', 1),
+(43, 'IMSS-PRESTAMOS', 'Revisión de Préstamos a personas de riesgo', 'IMSS', 1),
+(44, 'IMSS-SIPRES', 'SIPRES', 'IMSS', 1),
+(45, 'IMSS-SIC', 'SIC', 'IMSS', 1),
+(46, 'IMSS-REUNE', 'REUNE', 'IMSS', 1),
+(47, 'IMSS-RECO', 'RECO', 'IMSS', 1),
+(48, 'IMSS-REDECO', 'REDECO', 'IMSS', 1),
+(49, 'IMSS-RECA', 'RECA', 'IMSS', 1),
+(50, 'IMSS-IFIT', 'IFIT', 'IMSS', 1),
+(51, 'IMSS-PADRON', 'Actualización de padrón de proveedores', 'IMSS', 1),
+(52, 'FIN-ISN', 'ISN', 'FINANZAS', 1),
+(53, 'FIN-FONACOT', 'Fonacot', 'FINANZAS', 1),
+(54, 'FIN-ISAAN', 'ISAAN', 'FINANZAS', 1),
+(55, 'FIN-BUZON', 'Buzón Finanzas', 'FINANZAS', 1),
+(56, 'FIN-ANTILAVADO', 'Avisos Ley Antilavado', 'FINANZAS', 1),
+(57, 'STPS-NOM035', 'NOM 035', 'SECRETARÍA DEL TRABAJO', 1),
+(58, 'STPS-PTU', 'Comisión PTU', 'SECRETARÍA DEL TRABAJO', 1),
+(59, 'STPS-RIT', 'Comisión RIT', 'SECRETARÍA DEL TRABAJO', 1),
+(60, 'STPS-REPSE', 'REPSE', 'SECRETARÍA DEL TRABAJO', 1),
+(61, 'STPS-CONTRATOS', 'Contratos laborales', 'SECRETARÍA DEL TRABAJO', 1),
+(62, 'REL-69B', '69B', 'RELACIÓN DE NEGOCIOS', 1),
+(63, 'REL-DOMICILIO', 'Domicilio localizado', 'RELACIÓN DE NEGOCIOS', 1),
+(64, 'REL-TRABAJADORES', 'Trabajadores', 'RELACIÓN DE NEGOCIOS', 1),
+(65, 'REL-ACTIVOS', 'Activos', 'RELACIÓN DE NEGOCIOS', 1),
+(66, 'REL-MATERIALIDAD', 'Materialidad', 'RELACIÓN DE NEGOCIOS', 1);
 
 -- --------------------------------------------------------
 
@@ -486,7 +708,20 @@ INSERT INTO `permiso` (`id`, `clave`, `descripcion`) VALUES
 (92, 'empresa.obligacion.ver', 'Ver obligaciones asignadas por empresa'),
 (93, 'empresa.obligacion.asignar', 'Asignar nuevas obligaciones a una empresa'),
 (94, 'empresa.obligacion.editar', 'Editar configuración de obligaciones asignadas'),
-(95, 'empresa.obligacion.borrar', 'Desasignar obligaciones de una empresa');
+(95, 'empresa.obligacion.borrar', 'Desasignar obligaciones de una empresa'),
+(96, 'revisiones.ver', 'Permite listar y consultar revisiones visibles según el alcance del usuario'),
+(97, 'revisiones.crear', 'Permite registrar una nueva revisión con evidencia inicial obligatoria'),
+(98, 'revisiones.editar', 'Permite modificar los datos generales de la revisión (no documentos)'),
+(99, 'revisiones.borrar', 'Permite eliminar una revisión completa'),
+(100, 'revisiones.cambiar_estatus', 'Permite cambiar el estatus de una revisión entre EN PROCESO y COMPLETA'),
+(101, 'revisiones.subir_archivo', 'Permite subir documentos anexos a una revisión'),
+(102, 'revisiones.descargar_archivo', 'Permite descargar documentos de una revisión'),
+(103, 'revisiones.eliminar_archivo', 'Permite eliminar documentos anexos de una revisión'),
+(104, 'revisiones.reemplazar_inicial', 'Permite reemplazar la evidencia inicial de una revisión'),
+(105, 'revisiones.ver_historial', 'Permite acceder a la vista de historial de revisiones (solo lectura)'),
+(106, 'revisiones.alertas_config', 'Permite configurar alertas automáticas por vencimiento'),
+(107, 'revisiones.historial.ver', 'Acceder al historial de revisiones (solo lectura)'),
+(108, 'revisiones.historial.exportar', 'Exportar historial filtrado a CSV');
 
 -- --------------------------------------------------------
 
@@ -500,6 +735,169 @@ CREATE TABLE `rate_limit` (
   `ventana_inicio` datetime NOT NULL,
   `contador` int NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `revision`
+--
+
+CREATE TABLE `revision` (
+  `id` int NOT NULL,
+  `nombre` varchar(180) NOT NULL,
+  `numero_orden` varchar(80) DEFAULT NULL,
+  `numero_oficio` varchar(80) DEFAULT NULL,
+  `ejercicio` varchar(16) DEFAULT NULL,
+  `fecha_notificacion` date NOT NULL,
+  `fecha_vencimiento` date NOT NULL,
+  `tipo_revision_id` int NOT NULL,
+  `tipo_impuesto` varchar(120) DEFAULT NULL,
+  `dependencia` varchar(160) DEFAULT NULL,
+  `antecedente` varchar(160) DEFAULT NULL,
+  `estatus` enum('en_proceso','completa') NOT NULL DEFAULT 'en_proceso',
+  `riesgo` enum('bajo','medio','alto') NOT NULL DEFAULT 'medio',
+  `observaciones` text,
+  `area_id` int NOT NULL,
+  `responsable_id` int NOT NULL,
+  `created_by` int NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ;
+
+--
+-- Volcado de datos para la tabla `revision`
+--
+
+INSERT INTO `revision` (`id`, `nombre`, `numero_orden`, `numero_oficio`, `ejercicio`, `fecha_notificacion`, `fecha_vencimiento`, `tipo_revision_id`, `tipo_impuesto`, `dependencia`, `antecedente`, `estatus`, `riesgo`, `observaciones`, `area_id`, `responsable_id`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'dfasdf', 'sdfasd', 'sdfasd', '3', '2025-10-22', '2025-10-31', 2, 'asdfasd', 'asdfas', 'asdfasd', 'completa', 'medio', NULL, 4, 4, 2, '2025-10-22 15:25:09', '2025-10-22 16:38:16'),
+(2, 'dasdas', 'asdasd', 'asdasd', '4', '2025-10-19', '2025-11-08', 2, 'asdas', 'asdas', 'asdas', 'en_proceso', 'bajo', '', 2, 4, 2, '2025-10-22 16:05:55', '2025-10-22 16:05:55'),
+(3, 'Actualizacion', '125', '2530', '3', '2025-10-23', '2025-11-08', 2, 'asdas', 'dasd', 'asdasd', 'completa', 'alto', NULL, 4, 4, 2, '2025-10-22 16:46:51', '2025-10-22 17:32:32'),
+(4, 'fsdfasdf', 'asdfasdf', 'asdfasd', '3', '2025-10-19', '2025-10-31', 2, 'fasdf', 'asdfasd', 'sadfasd', 'completa', 'bajo', NULL, 4, 4, 2, '2025-10-22 17:35:29', '2025-10-22 18:30:04');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `revision_bitacora`
+--
+
+CREATE TABLE `revision_bitacora` (
+  `id` bigint NOT NULL,
+  `revision_id` int NOT NULL,
+  `evento` varchar(60) NOT NULL,
+  `detalle` json DEFAULT NULL,
+  `actor_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Volcado de datos para la tabla `revision_bitacora`
+--
+
+INSERT INTO `revision_bitacora` (`id`, `revision_id`, `evento`, `detalle`, `actor_id`, `created_at`) VALUES
+(1, 1, 'creacion', '{\"area_id\": 4, \"responsable_id\": 4}', 2, '2025-10-22 15:25:09'),
+(2, 1, 'subida_doc', '{\"docId\": 1, \"nombre\": \"1761146709_tmp_fa47a3ed7c235b38.docx\", \"is_inicial\": 1}', 2, '2025-10-22 15:25:09'),
+(3, 2, 'creacion', '{\"area_id\": 2, \"responsable_id\": 4}', 2, '2025-10-22 16:05:55'),
+(4, 2, 'subida_doc', '{\"docId\": 2, \"nombre\": \"1761149155_tmp_ed9e35c2c356afc5.pdf\", \"is_inicial\": 1}', 2, '2025-10-22 16:05:55'),
+(5, 1, 'cambio_estatus', '{\"a\": \"completa\", \"de\": \"en_proceso\"}', 2, '2025-10-22 16:11:42'),
+(6, 1, 'actualizacion', '{\"campos\": [\"nombre\", \"numero_orden\", \"numero_oficio\", \"ejercicio\", \"fecha_notificacion\", \"fecha_vencimiento\", \"tipo_revision_id\", \"tipo_impuesto\", \"dependencia\", \"antecedente\", \"riesgo\", \"observaciones\", \"area_id\", \"responsable_id\"]}', 2, '2025-10-22 16:36:37'),
+(7, 1, 'actualizacion', '{\"campos\": [\"nombre\", \"numero_orden\", \"numero_oficio\", \"ejercicio\", \"fecha_notificacion\", \"fecha_vencimiento\", \"tipo_revision_id\", \"tipo_impuesto\", \"dependencia\", \"antecedente\", \"riesgo\", \"observaciones\", \"area_id\", \"responsable_id\"]}', 2, '2025-10-22 16:37:48'),
+(8, 1, 'actualizacion', '{\"campos\": [\"nombre\", \"numero_orden\", \"numero_oficio\", \"ejercicio\", \"fecha_notificacion\", \"fecha_vencimiento\", \"tipo_revision_id\", \"tipo_impuesto\", \"dependencia\", \"antecedente\", \"riesgo\", \"observaciones\", \"area_id\", \"responsable_id\"]}', 2, '2025-10-22 16:38:16'),
+(9, 3, 'creacion', '{\"area_id\": 4, \"responsable_id\": 4}', 2, '2025-10-22 16:46:51'),
+(10, 3, 'subida_doc', '{\"docId\": 3, \"nombre\": \"1761151611_tmp_f77ffd1f65e115b2.pdf\", \"is_inicial\": 1}', 2, '2025-10-22 16:46:51'),
+(11, 3, 'actualizacion', '{\"campos\": [\"nombre\", \"numero_orden\", \"numero_oficio\", \"ejercicio\", \"fecha_notificacion\", \"fecha_vencimiento\", \"tipo_revision_id\", \"tipo_impuesto\", \"dependencia\", \"antecedente\", \"riesgo\", \"observaciones\", \"area_id\", \"responsable_id\"]}', 2, '2025-10-22 16:59:14'),
+(12, 3, 'actualizacion', '{\"campos\": [\"nombre\", \"numero_orden\", \"numero_oficio\", \"ejercicio\", \"fecha_notificacion\", \"fecha_vencimiento\", \"tipo_revision_id\", \"tipo_impuesto\", \"dependencia\", \"antecedente\", \"riesgo\", \"observaciones\", \"area_id\", \"responsable_id\"]}', 2, '2025-10-22 16:59:34'),
+(13, 3, 'actualizacion', '{\"campos\": [\"nombre\", \"numero_orden\", \"numero_oficio\", \"ejercicio\", \"fecha_notificacion\", \"fecha_vencimiento\", \"tipo_revision_id\", \"tipo_impuesto\", \"dependencia\", \"antecedente\", \"riesgo\", \"observaciones\", \"area_id\", \"responsable_id\"]}', 2, '2025-10-22 16:59:46'),
+(14, 3, 'subida_doc', '{\"docId\": 4, \"nombre\": \"14221633.docx\", \"is_inicial\": 0}', 2, '2025-10-22 17:29:04'),
+(15, 3, 'subida_doc', '{\"docId\": 5, \"nombre\": \"14221633.pdf\", \"is_inicial\": 0}', 2, '2025-10-22 17:29:04'),
+(16, 3, 'subida_doc', '{\"docId\": 6, \"nombre\": \"14221633_.pdf\", \"is_inicial\": 0}', 2, '2025-10-22 17:29:06'),
+(17, 3, 'subida_doc', '{\"docId\": 7, \"nombre\": \"14221633_.docx\", \"is_inicial\": 0}', 2, '2025-10-22 17:29:07'),
+(18, 3, 'cambio_estatus', '{\"a\": \"completa\", \"de\": \"en_proceso\"}', 2, '2025-10-22 17:32:32'),
+(19, 4, 'creacion', '{\"area_id\": 4, \"responsable_id\": 4}', 2, '2025-10-22 17:35:29'),
+(20, 4, 'subida_doc', '{\"docId\": 8, \"nombre\": \"1761154529_tmp_c0e4bcfea97c3db2.pdf\", \"is_inicial\": 1}', 2, '2025-10-22 17:35:29'),
+(21, 4, 'actualizacion', '{\"campos\": [\"nombre\", \"numero_orden\", \"numero_oficio\", \"ejercicio\", \"fecha_notificacion\", \"fecha_vencimiento\", \"tipo_revision_id\", \"tipo_impuesto\", \"dependencia\", \"antecedente\", \"riesgo\", \"observaciones\", \"area_id\", \"responsable_id\"]}', 2, '2025-10-22 17:35:53'),
+(22, 4, 'actualizacion', '{\"campos\": [\"nombre\", \"numero_orden\", \"numero_oficio\", \"ejercicio\", \"fecha_notificacion\", \"fecha_vencimiento\", \"tipo_revision_id\", \"tipo_impuesto\", \"dependencia\", \"antecedente\", \"riesgo\", \"observaciones\", \"area_id\", \"responsable_id\"]}', 2, '2025-10-22 18:28:24'),
+(23, 4, 'subida_doc', '{\"docId\": 9, \"nombre\": \"udemy certificado desarrolo web.pdf\", \"is_inicial\": 0}', 2, '2025-10-22 18:29:18'),
+(24, 4, 'subida_doc', '{\"docId\": 10, \"nombre\": \"udemy certificado desarrolo web.pdf\", \"is_inicial\": 0}', 2, '2025-10-22 18:29:37'),
+(25, 4, 'subida_doc', '{\"docId\": 11, \"nombre\": \"tarjetaNSS.pdf\", \"is_inicial\": 0}', 2, '2025-10-22 18:29:37'),
+(26, 4, 'cambio_estatus', '{\"a\": \"completa\", \"de\": \"en_proceso\"}', 2, '2025-10-22 18:30:04');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `revision_documento`
+--
+
+CREATE TABLE `revision_documento` (
+  `id` int NOT NULL,
+  `revision_id` int NOT NULL,
+  `version` int NOT NULL DEFAULT '1',
+  `is_inicial` tinyint(1) DEFAULT NULL,
+  `nombre_original` varchar(255) NOT NULL,
+  `archivo_path` varchar(255) NOT NULL,
+  `mime` varchar(120) DEFAULT NULL,
+  `size_bytes` int DEFAULT NULL,
+  `uploaded_by` int NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ;
+
+--
+-- Volcado de datos para la tabla `revision_documento`
+--
+
+INSERT INTO `revision_documento` (`id`, `revision_id`, `version`, `is_inicial`, `nombre_original`, `archivo_path`, `mime`, `size_bytes`, `uploaded_by`, `created_at`) VALUES
+(1, 1, 1, 1, '1761146709_tmp_fa47a3ed7c235b38.docx', '/uploads/revisiones/1/1761146709_tmp_fa47a3ed7c235b38.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 475049, 2, '2025-10-22 15:25:09'),
+(2, 2, 1, 1, '1761149155_tmp_ed9e35c2c356afc5.pdf', '/uploads/revisiones/2/1761149155_tmp_ed9e35c2c356afc5.pdf', 'application/pdf', 295885, 2, '2025-10-22 16:05:55'),
+(3, 3, 1, 1, '1761151611_tmp_f77ffd1f65e115b2.pdf', '/uploads/revisiones/3/1761151611_tmp_f77ffd1f65e115b2.pdf', 'application/pdf', 176363, 2, '2025-10-22 16:46:51'),
+(4, 3, 2, NULL, '14221633.docx', '/uploads/revisiones/3/8bdad85a2d3197b9abcacc161c6822dd.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 475049, 2, '2025-10-22 17:29:04'),
+(5, 3, 3, NULL, '14221633.pdf', '/uploads/revisiones/3/3edb80a201c75371a663c1dda1894c6f.pdf', 'application/pdf', 391227, 2, '2025-10-22 17:29:04'),
+(6, 3, 4, NULL, '14221633_.pdf', '/uploads/revisiones/3/3a31aa083d50a4633bdcedaf4cd7f7a2.pdf', 'application/pdf', 295885, 2, '2025-10-22 17:29:06'),
+(7, 3, 5, NULL, '14221633_.docx', '/uploads/revisiones/3/13f3e58f55650e8fffb8a8ba55808a9a.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 688788, 2, '2025-10-22 17:29:07'),
+(8, 4, 1, 1, '1761154529_tmp_c0e4bcfea97c3db2.pdf', '/uploads/revisiones/4/1761154529_tmp_c0e4bcfea97c3db2.pdf', 'application/pdf', 391227, 2, '2025-10-22 17:35:29'),
+(9, 4, 2, NULL, 'udemy certificado desarrolo web.pdf', '/uploads/revisiones/4/d9e53aa288b7d2671a19bda7fcd4a1ab.pdf', 'application/pdf', 238043, 2, '2025-10-22 18:29:18'),
+(10, 4, 3, NULL, 'udemy certificado desarrolo web.pdf', '/uploads/revisiones/4/96e2be32e9db308121b8cdf4a781347c.pdf', 'application/pdf', 238043, 2, '2025-10-22 18:29:37'),
+(11, 4, 4, NULL, 'tarjetaNSS.pdf', '/uploads/revisiones/4/c43895f74a3bc23bc3726af993219f34.pdf', 'application/pdf', 80259, 2, '2025-10-22 18:29:37');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `revision_notificacion`
+--
+
+CREATE TABLE `revision_notificacion` (
+  `id` bigint NOT NULL,
+  `revision_id` int NOT NULL,
+  `tipo` enum('proxima','vencida') NOT NULL,
+  `enviado_a` varchar(180) NOT NULL,
+  `dias_antes` int DEFAULT NULL,
+  `enviado_en` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `enviado_fecha` date GENERATED ALWAYS AS (cast(`enviado_en` as date)) STORED
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `revision_tipo`
+--
+
+CREATE TABLE `revision_tipo` (
+  `id` int NOT NULL,
+  `clave` varchar(60) NOT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Volcado de datos para la tabla `revision_tipo`
+--
+
+INSERT INTO `revision_tipo` (`id`, `clave`, `nombre`, `activo`) VALUES
+(1, 'requerimiento', 'Requerimiento', 1),
+(2, 'carta_invitacion', 'Carta-Invitación', 1),
+(3, 'pt_dictamen', 'PT-Dictamen', 1),
+(4, 'revision_gabinete', 'Revisión-Gabinete', 1),
+(5, 'visita_domiciliaria', 'Visita-Domiciliaria', 1),
+(6, 'compulsa', 'Compulsa', 1),
+(7, 'otro', 'Otro', 1);
 
 -- --------------------------------------------------------
 
@@ -564,6 +962,9 @@ INSERT INTO `rol_permiso` (`rol_id`, `permiso_id`) VALUES
 (2, 17),
 (2, 18),
 (2, 19),
+(2, 20),
+(2, 21),
+(2, 22),
 (2, 23),
 (2, 24),
 (2, 25),
@@ -600,6 +1001,7 @@ INSERT INTO `rol_permiso` (`rol_id`, `permiso_id`) VALUES
 (2, 75),
 (2, 76),
 (2, 77),
+(2, 78),
 (2, 79),
 (2, 84),
 (2, 85),
@@ -609,6 +1011,19 @@ INSERT INTO `rol_permiso` (`rol_id`, `permiso_id`) VALUES
 (2, 93),
 (2, 94),
 (2, 95),
+(2, 96),
+(2, 97),
+(2, 98),
+(2, 99),
+(2, 100),
+(2, 101),
+(2, 102),
+(2, 103),
+(2, 104),
+(2, 105),
+(2, 106),
+(2, 107),
+(2, 108),
 (3, 4),
 (3, 5),
 (3, 6),
@@ -759,7 +1174,7 @@ INSERT INTO `usuario` (`id`, `nombre`, `email`, `pass_hash`, `area_id`, `jefe_id
 (2, 'Gerente Fiscal', 'gerencia@gmi.local', '$2y$10$d3q2Thfym/KgvbyppJLsfOyqZHNRbo7IrnA8wNVXx5Rbu9sEH3/z2', 4, NULL, 1, '2025-09-28 19:59:41', '2025-09-28 22:53:11'),
 (3, 'Auxiliar Contable', 'auxiliar@gmi.local', '$2y$10$0dPMU8GZ9tsd/rL1tKz8zuEN9eTgL9yRrRnv5S2nDhdYXK0eXW0ni', 2, NULL, 1, '2025-09-28 19:59:41', '2025-09-28 21:28:15'),
 (4, 'Aldo', 'acristobal@dcsoluciones.net', '$2y$10$UyStw6oWuB8e8rMo76NhzeVm7uc47fevv0GII5K7Xz.JX3FVZQxCG', 2, NULL, 1, '2025-10-03 00:17:44', '2025-10-03 00:18:02'),
-(5, 'Usuario Prueba', 'prueba@prueba.com', '$2y$10$WxjlAXtpSMhHf/Kj9gzH2Oqev9kzP6HPXYjAvcIlWCjlTBlQEMztm', 2, NULL, 1, '2025-10-05 18:29:30', NULL);
+(5, 'Usuario Prueba', 'prueba@prueba.com', '$2y$10$WxjlAXtpSMhHf/Kj9gzH2Oqev9kzP6HPXYjAvcIlWCjlTBlQEMztm', 1, NULL, 1, '2025-10-05 18:29:30', '2025-10-20 18:10:24');
 
 -- --------------------------------------------------------
 
@@ -779,7 +1194,8 @@ CREATE TABLE `usuario_rol` (
 INSERT INTO `usuario_rol` (`usuario_id`, `rol_id`) VALUES
 (2, 2),
 (3, 3),
-(4, 4);
+(4, 4),
+(5, 4);
 
 -- --------------------------------------------------------
 
@@ -788,10 +1204,37 @@ INSERT INTO `usuario_rol` (`usuario_id`, `rol_id`) VALUES
 -- (Véase abajo para la vista actual)
 --
 CREATE TABLE `v_permiso` (
-`clave` varchar(120)
-,`descripcion` varchar(200)
-,`id` int
+`id` int
+,`clave` varchar(120)
 ,`modulo` varchar(120)
+,`descripcion` varchar(200)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura Stand-in para la vista `v_revisiones_listado`
+-- (Véase abajo para la vista actual)
+--
+CREATE TABLE `v_revisiones_listado` (
+`id` int
+,`nombre` varchar(180)
+,`numero_orden` varchar(80)
+,`numero_oficio` varchar(80)
+,`ejercicio` varchar(16)
+,`fecha_notificacion` date
+,`fecha_vencimiento` date
+,`dias_restantes` int
+,`estatus` enum('en_proceso','completa')
+,`riesgo` enum('bajo','medio','alto')
+,`area_id` int
+,`responsable_id` int
+,`tipo_revision` varchar(120)
+,`tipo_impuesto` varchar(120)
+,`dependencia` varchar(160)
+,`antecedente` varchar(160)
+,`created_at` timestamp
+,`updated_at` timestamp
 );
 
 -- --------------------------------------------------------
@@ -801,11 +1244,11 @@ CREATE TABLE `v_permiso` (
 -- (Véase abajo para la vista actual)
 --
 CREATE TABLE `v_rol_permisos` (
-`modulo` varchar(120)
-,`permiso_clave` varchar(120)
-,`rol_id` int
+`rol_id` int
 ,`rol_nombre` varchar(60)
 ,`rol_slug` varchar(80)
+,`permiso_clave` varchar(120)
+,`modulo` varchar(120)
 );
 
 -- --------------------------------------------------------
@@ -820,6 +1263,15 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 -- --------------------------------------------------------
 
 --
+-- Estructura para la vista `v_revisiones_listado`
+--
+DROP TABLE IF EXISTS `v_revisiones_listado`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_revisiones_listado`  AS SELECT `r`.`id` AS `id`, `r`.`nombre` AS `nombre`, `r`.`numero_orden` AS `numero_orden`, `r`.`numero_oficio` AS `numero_oficio`, `r`.`ejercicio` AS `ejercicio`, `r`.`fecha_notificacion` AS `fecha_notificacion`, `r`.`fecha_vencimiento` AS `fecha_vencimiento`, (to_days(`r`.`fecha_vencimiento`) - to_days(curdate())) AS `dias_restantes`, `r`.`estatus` AS `estatus`, `r`.`riesgo` AS `riesgo`, `r`.`area_id` AS `area_id`, `r`.`responsable_id` AS `responsable_id`, `rt`.`nombre` AS `tipo_revision`, `r`.`tipo_impuesto` AS `tipo_impuesto`, `r`.`dependencia` AS `dependencia`, `r`.`antecedente` AS `antecedente`, `r`.`created_at` AS `created_at`, `r`.`updated_at` AS `updated_at` FROM (`revision` `r` join `revision_tipo` `rt` on((`rt`.`id` = `r`.`tipo_revision_id`))) ;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura para la vista `v_rol_permisos`
 --
 DROP TABLE IF EXISTS `v_rol_permisos`;
@@ -829,6 +1281,12 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 -- Índices para tablas volcadas
 --
+
+--
+-- Indices de la tabla `app_parametro`
+--
+ALTER TABLE `app_parametro`
+  ADD PRIMARY KEY (`k`);
 
 --
 -- Indices de la tabla `area`
@@ -966,6 +1424,52 @@ ALTER TABLE `rate_limit`
   ADD UNIQUE KEY `uq_rl` (`key_hash`,`ventana_inicio`);
 
 --
+-- Indices de la tabla `revision`
+--
+ALTER TABLE `revision`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `ix_rev_estatus` (`estatus`),
+  ADD KEY `ix_rev_riesgo` (`riesgo`),
+  ADD KEY `ix_rev_venc` (`fecha_vencimiento`),
+  ADD KEY `ix_rev_area` (`area_id`),
+  ADD KEY `ix_rev_responsable` (`responsable_id`),
+  ADD KEY `ix_rev_tipo` (`tipo_revision_id`),
+  ADD KEY `ix_rev_dep` (`dependencia`);
+
+--
+-- Indices de la tabla `revision_bitacora`
+--
+ALTER TABLE `revision_bitacora`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `ix_rbit_rev` (`revision_id`),
+  ADD KEY `ix_rbit_evt` (`evento`);
+
+--
+-- Indices de la tabla `revision_documento`
+--
+ALTER TABLE `revision_documento`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_revdoc_unico_inicial` (`revision_id`,`is_inicial`),
+  ADD KEY `ix_revdoc_rev` (`revision_id`),
+  ADD KEY `ix_revdoc_revision` (`revision_id`);
+
+--
+-- Indices de la tabla `revision_notificacion`
+--
+ALTER TABLE `revision_notificacion`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_rnotif_diaria` (`revision_id`,`tipo`,`enviado_a`,`enviado_fecha`),
+  ADD KEY `ix_rnotif_rev` (`revision_id`),
+  ADD KEY `ix_rnotif_tipo` (`tipo`);
+
+--
+-- Indices de la tabla `revision_tipo`
+--
+ALTER TABLE `revision_tipo`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `clave` (`clave`);
+
+--
 -- Indices de la tabla `rol`
 --
 ALTER TABLE `rol`
@@ -1034,13 +1538,13 @@ ALTER TABLE `auth_token`
 -- AUTO_INCREMENT de la tabla `empresa`
 --
 ALTER TABLE `empresa`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `empresa_documento`
 --
 ALTER TABLE `empresa_documento`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT de la tabla `empresa_documento_tipo`
@@ -1052,7 +1556,7 @@ ALTER TABLE `empresa_documento_tipo`
 -- AUTO_INCREMENT de la tabla `empresa_obligacion`
 --
 ALTER TABLE `empresa_obligacion`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=209;
 
 --
 -- AUTO_INCREMENT de la tabla `evidencia`
@@ -1064,7 +1568,7 @@ ALTER TABLE `evidencia`
 -- AUTO_INCREMENT de la tabla `menu`
 --
 ALTER TABLE `menu`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT de la tabla `menu_backup_20251003`
@@ -1076,7 +1580,7 @@ ALTER TABLE `menu_backup_20251003`
 -- AUTO_INCREMENT de la tabla `obligacion`
 --
 ALTER TABLE `obligacion`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
 
 --
 -- AUTO_INCREMENT de la tabla `password_reset`
@@ -1088,7 +1592,7 @@ ALTER TABLE `password_reset`
 -- AUTO_INCREMENT de la tabla `permiso`
 --
 ALTER TABLE `permiso`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=96;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=109;
 
 --
 -- AUTO_INCREMENT de la tabla `rate_limit`
@@ -1097,10 +1601,40 @@ ALTER TABLE `rate_limit`
   MODIFY `id` bigint NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `revision`
+--
+ALTER TABLE `revision`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `revision_bitacora`
+--
+ALTER TABLE `revision_bitacora`
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+
+--
+-- AUTO_INCREMENT de la tabla `revision_documento`
+--
+ALTER TABLE `revision_documento`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `revision_notificacion`
+--
+ALTER TABLE `revision_notificacion`
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `revision_tipo`
+--
+ALTER TABLE `revision_tipo`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
 -- AUTO_INCREMENT de la tabla `rol`
 --
 ALTER TABLE `rol`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT de la tabla `rutina`
@@ -1169,6 +1703,30 @@ ALTER TABLE `menu_rol`
   ADD CONSTRAINT `fk_menurol_rol` FOREIGN KEY (`rol_id`) REFERENCES `rol` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_mr_menu` FOREIGN KEY (`menu_id`) REFERENCES `menu` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_mr_rol` FOREIGN KEY (`rol_id`) REFERENCES `rol` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `revision`
+--
+ALTER TABLE `revision`
+  ADD CONSTRAINT `fk_revision_tipo` FOREIGN KEY (`tipo_revision_id`) REFERENCES `revision_tipo` (`id`);
+
+--
+-- Filtros para la tabla `revision_bitacora`
+--
+ALTER TABLE `revision_bitacora`
+  ADD CONSTRAINT `fk_rbit_revision` FOREIGN KEY (`revision_id`) REFERENCES `revision` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `revision_documento`
+--
+ALTER TABLE `revision_documento`
+  ADD CONSTRAINT `fk_revdoc_revision` FOREIGN KEY (`revision_id`) REFERENCES `revision` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `revision_notificacion`
+--
+ALTER TABLE `revision_notificacion`
+  ADD CONSTRAINT `fk_rnotif_revision` FOREIGN KEY (`revision_id`) REFERENCES `revision` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `rol_permiso`
