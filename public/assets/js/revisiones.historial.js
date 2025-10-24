@@ -146,54 +146,54 @@
       const anexos = Array.isArray(docs?.anexos) ? docs.anexos : [];
 
       body.innerHTML = `
-    <div class="row small no-gutters modal-detail-grid">
-      <!-- Columna Izquierda: Información -->
-      <div class="col-md-7 pr-md-3 border-right border-secondary modal-left-col">
-        <div class="section-title">Información general</div>
-        <dl class="row dl-tight mb-0">
-          ${dl('Nombre', rev.nombre)}
-          ${dl('Tipo de revisión', rev.tipo_revision)}
-          ${dl('Dependencia', rev.dependencia)}
-          ${dl('Área', rev.area_nombre || rev.area_id)}
-          ${dl('Responsable', rev.responsable_nombre || rev.responsable_id)}
-          ${dl('Fecha notificación', fmtDate(rev.fecha_notificacion))}
-          ${dl('Fecha vencimiento', fmtDate(rev.fecha_vencimiento))}
-          ${dl('Días restantes', rev.dias_restantes)}
-          ${dl('Estatus', statusBadge(rev.estatus), true)}
-          ${dl('Riesgo', capitalize(rev.riesgo))}
-          ${dl('Número de Orden', rev.numero_orden)}
-          ${dl('Número de Oficio', rev.numero_oficio)}
-          ${dl('Ejercicio', rev.ejercicio)}
-          ${dlBlock('Observaciones', rev.observaciones)}
-        </dl>
-      </div>
+         <div class="row small no-gutters modal-detail-grid">
+           <!-- Columna Izquierda: Información -->
+           <div class="col-md-7 pr-md-3 border-right border-secondary modal-left-col">
+             <div class="section-title">Información general</div>
+             <dl class="row dl-tight mb-0">
+               ${dl('Nombre', rev.nombre)}
+               ${dl('Tipo de revisión', rev.tipo_revision)}
+               ${dl('Dependencia', rev.dependencia)}
+               ${dl('Área', rev.area_nombre || rev.area_id)}
+               ${dl('Responsable', rev.responsable_nombre || rev.responsable_id)}
+               ${dl('Fecha notificación', fmtDate(rev.fecha_notificacion))}
+               ${dl('Fecha vencimiento', fmtDate(rev.fecha_vencimiento))}
+               ${dl('Días restantes', rev.dias_restantes)}
+               ${dl('Estatus', statusBadge(rev.estatus), true)}
+               ${dl('Riesgo', capitalize(rev.riesgo))}
+               ${dl('Número de Orden', rev.numero_orden)}
+               ${dl('Número de Oficio', rev.numero_oficio)}
+               ${dl('Ejercicio', rev.ejercicio)}
+               ${dlBlock('Observaciones', rev.observaciones)}
+             </dl>
+           </div>
 
-      <!-- Columna Derecha: Documentos -->
-      <div class="col-md-5 pl-md-3 modal-right-col">
-        <div class="section-title">Documentos</div>
+           <!-- Columna Derecha: Documentos -->
+           <div class="col-md-5 pl-md-3 modal-right-col">
+             <div class="section-title">Documentos</div>
 
-        <div class="card bg-dark border-secondary mb-2 shadow-none">
-          <div class="card-header py-2 px-3 card-head-compact">
-            <strong class="mr-1">Evidencia inicial</strong>
-            ${inicial ? `<span class="badge badge-primary">v${inicial.version || 1}</span>` : ''}
-          </div>
-          <div class="card-body py-2 px-2">
-            ${inicial ? docRowCompact(inicial, rev.id) : '<em class="text-muted">Sin evidencia inicial</em>'}
-          </div>
-        </div>
+             <div class="card bg-dark border-secondary mb-2 shadow-none">
+               <div class="card-header py-2 px-3 card-head-compact">
+                 <strong class="mr-1">Evidencia inicial</strong>
+                 ${inicial ? `<span class="badge badge-primary">v${inicial.version || 1}  </span>` : ''}
+               </div>
+               <div class="card-body py-2 px-2">
+                 ${inicial ? docRowCompact(inicial, rev.id) : '<em   class="text-muted">Sin evidencia inicial</em>'}
+               </div>
+             </div>
 
-        <div class="card bg-dark border-secondary shadow-none">
-          <div class="card-header py-2 px-3 card-head-compact">
-            <strong class="mr-1">Anexos</strong>
-            ${anexos.length ? `<span class="badge badge-secondary">${anexos.length}</span>` : ''}
-          </div>
-          <div class="card-body py-2 px-2">
-            ${anexos.length ? anexos.map(d => docRowCompact(d, rev.id)).join('') : '<em class="text-muted">Sin anexos</em>'}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+             <div class="card bg-dark border-secondary shadow-none">
+               <div class="card-header py-2 px-3 card-head-compact">
+                 <strong class="mr-1">Anexos</strong>
+                 ${anexos.length ? `<span class="badge badge-secondary">${anexos.length}  </span>` : ''}
+               </div>
+               <div class="card-body py-2 px-2">
+                 ${anexos.length ? anexos.map(d => docRowCompact(d, rev.id)).join('') :   '<em class="text-muted">Sin anexos</em>'}
+               </div>
+             </div>
+           </div>
+         </div>
+      `;
 
       if (window.__applyGates) window.__applyGates(body);
    }

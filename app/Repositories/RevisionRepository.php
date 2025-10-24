@@ -286,4 +286,21 @@ final class RevisionRepository
       $st->execute([':rid' => $revisionId]);
       return (int)$st->fetchColumn();
    }
+
+
+   public function findRevisionesVencenEl(string $yyyy_mm_dd): array
+   {
+      $sql = "
+         SELECT r.id, r.nombre, r.ejercicio, r.fecha_vencimiento,
+               r.tipo_impuesto, r.dependencia, r.riesgo,
+               u.email AS responsable_email
+         FROM revision r
+         JOIN usuario u ON u.id = r.responsable_id
+         WHERE r.estatus = 'en_proceso'
+         AND DATE(r.fecha_vencimiento) = :fecha
+      ";
+      $st = $this->db->prepare($sql); // <- aquí estaba el problema
+      $st->execute([':fecha' => $yyyy_mm_dd]);
+      return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+   }
 }

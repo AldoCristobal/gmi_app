@@ -27,11 +27,11 @@
                </div>
                <div class="col-md-3">
                   <label class="form-label small mb-1">Área</label>
-                  <select id="emp-f-area" class="form-select form-select-sm"></select>
+                  <select id="emp-f-area" class="custom-select custom-select-sm"></select>
                </div>
                <div class="col-md-2">
                   <label class="form-label small mb-1">Activo</label>
-                  <select id="emp-f-activo" class="form-select form-select-sm">
+                  <select id="emp-f-activo" class="custom-select custom-select-sm">
                      <option value="">Todos</option>
                      <option value="1">Sí</option>
                      <option value="0">No</option>
@@ -114,14 +114,14 @@
                </div>
                <div class="col-md-2">
                   <label class="form-label small">Tipo de Persona</label>
-                  <select id="emp-tipo_persona" class="form-select form-select-sm">
+                  <select id="emp-tipo_persona" class="custom-select custom-select-sm">
                      <option value="FISICA">Física</option>
                      <option value="MORAL">Moral</option>
                   </select>
                </div>
                <div class="col-md-2">
                   <label class="form-label small">Activo</label>
-                  <select id="emp-activo" class="form-select form-select-sm">
+                  <select id="emp-activo" class="custom-select custom-select-sm">
                      <option value="1">Sí</option>
                      <option value="0">No</option>
                   </select>
@@ -129,11 +129,11 @@
 
                <div class="col-md-3">
                   <label class="form-label small">Área</label>
-                  <select id="emp-area_id" class="form-select form-select-sm"></select>
+                  <select id="emp-area_id" class="custom-select custom-select-sm"></select>
                </div>
                <div class="col-md-3">
                   <label class="form-label small">Responsable</label>
-                  <select id="emp-responsable_id" class="form-select form-select-sm"></select>
+                  <select id="emp-responsable_id" class="custom-select custom-select-sm"></select>
                </div>
 
                <!-- Campos extendidos -->
@@ -163,7 +163,7 @@
                </div>
                <div class="col-md-3">
                   <label class="form-label small">Estatus domicilio</label>
-                  <select id="emp-estatus_domicilio" class="form-select form-select-sm">
+                  <select id="emp-estatus_domicilio" class="custom-select custom-select-sm">
                      <option value="LOCALIZADO">Localizado</option>
                      <option value="NO_LOCALIZADO">No localizado</option>
                   </select>
@@ -197,7 +197,7 @@
             <div class="row g-2 mb-3">
                <div class="col-md-5">
                   <label class="form-label small mb-1">Ver últimas versiones por tipo</label>
-                  <select id="exp-up-tipo_clave" class="form-select form-select-sm">
+                  <select id="exp-up-tipo_clave" class="custom-select custom-select-sm">
                      <option value="">Seleccione…</option>
                   </select>
                </div>
