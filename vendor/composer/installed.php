@@ -3,7 +3,7 @@
         'name' => 'gmi/erp',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '673324c77a6ae6e257aad6fc58d486597f1b1ec4',
+        'reference' => '2ae1c74e1bf8447308bbdb6d13b624b7ae969858',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'gmi/erp' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '673324c77a6ae6e257aad6fc58d486597f1b1ec4',
+            'reference' => '2ae1c74e1bf8447308bbdb6d13b624b7ae969858',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

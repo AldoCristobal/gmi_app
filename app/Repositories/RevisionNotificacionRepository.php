@@ -5,10 +5,16 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use PDO;
+use App\Support\DB;
 
-class RevisionNotificacionRepository
+final class RevisionNotificacionRepository
 {
-    public function __construct(private PDO $pdo) {}
+    private PDO $db;
+
+    public function __construct()
+    {
+        $this->db = DB::pdo();
+    }
 
     /** ¿Ya hay un registro hoy para (revision_id, tipo, enviado_a)? */
     public function existsForToday(int $revisionId, string $tipo, string $destinatario): bool
@@ -22,7 +28,7 @@ class RevisionNotificacionRepository
               AND enviado_fecha = CURDATE()
             LIMIT 1
         ";
-        $st = $this->pdo->prepare($sql);
+        $st = $this->db->prepare($sql);
         $st->execute([':rid' => $revisionId, ':tipo' => $tipo, ':to' => $destinatario]);
         return (bool)$st->fetchColumn();
     }
@@ -33,44 +39,43 @@ class RevisionNotificacionRepository
             INSERT INTO revision_notificacion (revision_id, tipo, enviado_a, dias_antes)
             VALUES (:rid, :tipo, :to, :dias)
         ";
-        $st = $this->pdo->prepare($sql);
-        $st->execute([
-            ':rid'  => $revisionId,
-            ':tipo' => $tipo,
-            ':to'   => $destinatario,
-            ':dias' => $diasAntes
-        ]);
+        $st = $this->db->prepare($sql);
+        $st->execute([':rid' => $revisionId, ':tipo' => $tipo, ':to' => $destinatario, ':dias' => $diasAntes]);
     }
 
-    /** Si quieres dejar trazabilidad cuando falta email, registramos igual con “(sin email)”. */
-    public function insertOmitida(int $revisionId, string $tipo, string $destinatario, int $diasAntes): void
+    public function insertOmitida(int $revisionId, string $tipo, string $destinatario, int $diasAntes, ?string $motivo = null): void
     {
         $sql = "
             INSERT INTO revision_notificacion (revision_id, tipo, enviado_a, dias_antes)
             VALUES (:rid, :tipo, :to, :dias)
         ";
-        $st = $this->pdo->prepare($sql);
-        $st->execute([
-            ':rid'  => $revisionId,
-            ':tipo' => $tipo,
-            ':to'   => $destinatario,
-            ':dias' => $diasAntes
-        ]);
+        $st = $this->db->prepare($sql);
+        $st->execute([':rid' => $revisionId, ':tipo' => $tipo, ':to' => $destinatario, ':dias' => $diasAntes]);
     }
 
-    /** Si no guardas estatus/error en la tabla, este insert mantiene la UNIQUE diaria igualmente. */
-    public function insertFallida(int $revisionId, string $tipo, string $destinatario, int $diasAntes): void
+    public function insertFallida(int $revisionId, string $tipo, string $destinatario, int $diasAntes, string $err): void
     {
+        // Igual que insertEnviada por compatibilidad con tu esquema actual.
         $sql = "
             INSERT INTO revision_notificacion (revision_id, tipo, enviado_a, dias_antes)
             VALUES (:rid, :tipo, :to, :dias)
         ";
-        $st = $this->pdo->prepare($sql);
-        $st->execute([
-            ':rid'  => $revisionId,
-            ':tipo' => $tipo,
-            ':to'   => $destinatario,
-            ':dias' => $diasAntes
-        ]);
+        $st = $this->db->prepare($sql);
+        $st->execute([':rid' => $revisionId, ':tipo' => $tipo, ':to' => $destinatario, ':dias' => $diasAntes]);
     }
+
+    /* ——— Variante si agregas columnas estatus/error_msg ———
+    public function insertEnviada(int $rid, string $tipo, string $to, int $dias): void {
+        $this->db->prepare("INSERT INTO revision_notificacion (revision_id,tipo,enviado_a,dias_antes,estatus) VALUES (?,?,?,?, 'enviada')")
+                 ->execute([$rid,$tipo,$to,$dias]);
+    }
+    public function insertOmitida(int $rid, string $tipo, string $to, int $dias, ?string $err=null): void {
+        $this->db->prepare("INSERT INTO revision_notificacion (revision_id,tipo,enviado_a,dias_antes,estatus,error_msg) VALUES (?,?,?,?, 'omitida', ?)")
+                 ->execute([$rid,$tipo,$to,$dias,$err]);
+    }
+    public function insertFallida(int $rid, string $tipo, string $to, int $dias, string $err): void {
+        $this->db->prepare("INSERT INTO revision_notificacion (revision_id,tipo,enviado_a,dias_antes,estatus,error_msg) VALUES (?,?,?,?, 'fallida', ?)")
+                 ->execute([$rid,$tipo,$to,$dias,$err]);
+    }
+    */
 }

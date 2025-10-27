@@ -15,4 +15,19 @@ final class Env
          $dotenv->safeLoad();
       }
    }
+
+   public static function get(string $key, ?string $default = null): ?string
+   {
+      if (array_key_exists($key, $_ENV)) {
+         return is_string($_ENV[$key]) ? $_ENV[$key] : $default;
+      }
+      if (array_key_exists($key, $_SERVER)) {
+         return is_string($_SERVER[$key]) ? $_SERVER[$key] : $default;
+      }
+      $v = getenv($key);
+      if ($v !== false && $v !== null) {
+         return (string)$v;
+      }
+      return $default;
+    }
 }

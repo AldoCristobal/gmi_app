@@ -7,10 +7,8 @@ namespace App\Services;
 use App\Repositories\RevisionRepository;
 use App\Repositories\RevisionNotificacionRepository;
 use App\Support\Mailer;
-use DateTimeImmutable;
-use Exception;
 
-class RevisionNotificationService
+final class RevisionNotificacionService
 {
    public function __construct(
       private RevisionRepository $revRepo,
@@ -19,20 +17,18 @@ class RevisionNotificationService
    ) {}
 
    /**
-    * Envía correos para revisiones que vencen en 5 días (solo estatus 'en_proceso').
-    * Usa tu tabla revision_notificacion para idempotencia diaria.
+    * Envía correos para revisiones que vencen en 5 días (estatus 'en_proceso').
+    * Retorna métricas del proceso.
     */
    public function sendPreVencimiento5(): array
    {
-      date_default_timezone_set('America/Mexico_City');
-
-      $hoyMx    = (new DateTimeImmutable('today'))->format('Y-m-d');
-      $objetivo = (new DateTimeImmutable('today +5 days'))->format('Y-m-d');
+      $hoyMx    = (new \DateTimeImmutable('today'))->format('Y-m-d');
+      $objetivo = (new \DateTimeImmutable('today +5 days'))->format('Y-m-d');
 
       $revisiones = $this->revRepo->findRevisionesVencenEl($objetivo);
 
       $stats = [
-         'fecha_corrida' => $hoyMx,
+         'fecha_corrida'  => $hoyMx,
          'fecha_objetivo' => $objetivo,
          'total'   => count($revisiones),
          'enviadas' => 0,
@@ -49,25 +45,22 @@ class RevisionNotificationService
             continue;
          }
 
-         // Sin correo: registramos omitida
          if ($dest === '') {
-            $this->logRepo->insertOmitida($revisionId, 'proxima', '(sin email)', 5);
+            $this->logRepo->insertOmitida($revisionId, 'proxima', '(sin email)', 5, 'responsable sin email');
             $stats['omitidas']++;
             $stats['detalles'][] = ['revision_id' => $revisionId, 'status' => 'omitida', 'motivo' => 'sin_email'];
             continue;
          }
 
-         // Si ya existe registro hoy, no re-enviamos
          if ($this->logRepo->existsForToday($revisionId, 'proxima', $dest)) {
-            $stats['detalles'][] = ['revision_id' => $revisionId, 'status' => 'ya_registrada'];
+            $stats['detalles'][] = ['revision_id' => $revisionId, 'status' => 'ya_registrada', 'to' => $dest];
             continue;
          }
 
-         // Asunto + cuerpo
          $asunto = sprintf(
             '[ERP-GMI] Aviso: “%s” vence el %s',
             (string)($r['nombre'] ?? 'Revisión'),
-            (new DateTimeImmutable((string)$r['fecha_vencimiento']))->format('d/m/Y')
+            (new \DateTimeImmutable((string)$r['fecha_vencimiento']))->format('d/m/Y')
          );
 
          $linkDetalle = rtrim((string)(getenv('APP_URL') ?: 'http://localhost'), '/')
@@ -80,16 +73,10 @@ class RevisionNotificationService
             $this->logRepo->insertEnviada($revisionId, 'proxima', $dest, 5);
             $stats['enviadas']++;
             $stats['detalles'][] = ['revision_id' => $revisionId, 'status' => 'enviada', 'to' => $dest];
-         } catch (Exception $ex) {
-            // Si más adelante agregas columnas estatus/error, aquí las usas.
-            $this->logRepo->insertFallida($revisionId, 'proxima', $dest, 5);
+         } catch (\Throwable $ex) {
+            $this->logRepo->insertFallida($revisionId, 'proxima', $dest, 5, mb_substr($ex->getMessage(), 0, 500));
             $stats['fallidas']++;
-            $stats['detalles'][] = [
-               'revision_id' => $revisionId,
-               'status' => 'fallida',
-               'to' => $dest,
-               'error' => $ex->getMessage()
-            ];
+            $stats['detalles'][] = ['revision_id' => $revisionId, 'status' => 'fallida', 'to' => $dest, 'error' => $ex->getMessage()];
          }
       }
 
@@ -99,7 +86,7 @@ class RevisionNotificationService
    private function renderCorreo(array $r, string $linkDetalle): string
    {
       $nombre    = htmlspecialchars((string)($r['nombre'] ?? ''), ENT_QUOTES, 'UTF-8');
-      $vence     = (new DateTimeImmutable((string)$r['fecha_vencimiento']))->format('d/m/Y');
+      $vence     = (new \DateTimeImmutable((string)$r['fecha_vencimiento']))->format('d/m/Y');
       $ejercicio = htmlspecialchars((string)($r['ejercicio'] ?? ''), ENT_QUOTES, 'UTF-8');
       $impuesto  = htmlspecialchars((string)($r['tipo_impuesto'] ?? ''), ENT_QUOTES, 'UTF-8');
       $depend    = htmlspecialchars((string)($r['dependencia'] ?? ''), ENT_QUOTES, 'UTF-8');
@@ -107,23 +94,23 @@ class RevisionNotificationService
       $link      = htmlspecialchars($linkDetalle, ENT_QUOTES, 'UTF-8');
 
       return <<<HTML
-            <!doctype html>
-            <html>
-              <body style="font-family:Arial,Helvetica,sans-serif; font-size:14px; color:#111;">
-                <h2 style="margin:0 0 10px;">Revisión próxima a vencer (5 días)</h2>
-                <p>La revisión <strong>“{$nombre}”</strong> está próxima a vencer.</p>
-                <ul>
-                  <li><strong>Vence:</strong> {$vence}</li>
-                  <li><strong>Ejercicio:</strong> {$ejercicio}</li>
-                  <li><strong>Tipo de impuesto:</strong> {$impuesto}</li>
-                  <li><strong>Dependencia:</strong> {$depend}</li>
-                  <li><strong>Riesgo:</strong> {$riesgo}</li>
-                </ul>
-                <p><a href="{$link}" style="display:inline-block; padding:10px 14px; text-decoration:none; border-radius:6px; background:#111; color:#fff;">Abrir revisión</a></p>
-                <hr>
-                <p style="font-size:12px; color:#666;">Mensaje automático de ERP-GMI. Por favor, no responda este correo.</p>
-              </body>
-            </html>
-         HTML;
+<!doctype html>
+<html>
+  <body style="font-family:Arial,Helvetica,sans-serif; font-size:14px; color:#111;">
+    <h2 style="margin:0 0 10px;">Revisión próxima a vencer (5 días)</h2>
+    <p>La revisión <strong>“{$nombre}”</strong> está próxima a vencer.</p>
+    <ul>
+      <li><strong>Vence:</strong> {$vence}</li>
+      <li><strong>Ejercicio:</strong> {$ejercicio}</li>
+      <li><strong>Tipo de impuesto:</strong> {$impuesto}</li>
+      <li><strong>Dependencia:</strong> {$depend}</li>
+      <li><strong>Riesgo:</strong> {$riesgo}</li>
+    </ul>
+    <p><a href="{$link}" style="display:inline-block; padding:10px 14px; text-decoration:none; border-radius:6px; background:#111; color:#fff;">Abrir revisión</a></p>
+    <hr>
+    <p style="font-size:12px; color:#666;">Mensaje automático de ERP-GMI. Por favor, no responda este correo.</p>
+  </body>
+</html>
+HTML;
    }
 }
