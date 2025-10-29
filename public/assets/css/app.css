@@ -650,13 +650,96 @@
    color: #adb5bd;
 }
 
-/* Overdue / due soon (grid) — ya existentes; los dejo aquí por si no estaban */
-.ag-theme-alpine-dark .ag-row.row-overdue {
-   background-color: rgba(220, 53, 69, .15) !important;
-   border-left: 3px solid #dc3545 !important;
+.row-overdue {
+   background: #fff1f1 !important;
 }
 
-.ag-theme-alpine-dark .ag-row.row-due-soon {
-   background-color: rgba(255, 193, 7, .15) !important;
-   border-left: 3px solid #ffc107 !important;
+.row-due-soon {
+   background: #fffbe6 !important;
+}
+
+.status-chip {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+   padding: 2px 8px;
+   border-radius: 12px;
+   font-size: 12px;
+}
+
+.status-proceso {
+   background: #e3f2fd;
+   color: #0d47a1;
+}
+
+.status-completa {
+   background: #e8f5e9;
+   color: #1b5e20;
+}
+
+.status-cancelada {
+   background: #fbe9e7;
+   color: #bf360c;
+}
+
+/* Chips de estado en la columna "Vence en (días)" */
+.chip {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+   padding: 3px 8px;
+   border-radius: 12px;
+   font-size: 12px;
+   white-space: nowrap;
+}
+
+.chip i {
+   font-size: 12px;
+}
+
+.chip-done {
+   background: #e8f5e9;
+   color: #1b5e20;
+}
+
+/* verde claro */
+.chip-cancel {
+   background: #fbe9e7;
+   color: #bf360c;
+}
+
+/* naranja claro */
+.chip-neutral {
+   background: #eceff1;
+   color: #455a64;
+}
+
+/* gris */
+
+.due-num {
+   font-weight: 600;
+}
+
+.due-over {
+   color: #b71c1c;
+}
+
+/* vencida */
+.due-soon {
+   color: #8d6e00;
+}
+
+/* próxima */
+
+/* Si ya tienes estas, usa las existentes; si no, aquí hay defaults */
+.cell-vencida {
+   background: #ffe6e6 !important;
+   color: #b71c1c !important;
+   font-weight: 600;
+}
+
+.cell-proxima {
+   background: #fff8e1 !important;
+   color: #8d6e00 !important;
+   font-weight: 600;
 }

@@ -39,7 +39,7 @@ final class RevisionRepository
       return implode(' AND ', $w);
    }
 
-   /** Listado con filtros + paginación */
+   /** Listado con filtros + paginación (JOINs + semáforo condicionado) */
    public function list(array $filters, array $scope, int $page, int $size): array
    {
       $params = [];
@@ -47,7 +47,13 @@ final class RevisionRepository
 
       if (!empty($filters['q'])) {
          $params[':q'] = '%' . $filters['q'] . '%';
-         $where .= " AND (r.nombre LIKE :q OR r.numero_orden LIKE :q OR r.numero_oficio LIKE :q OR r.dependencia LIKE :q OR r.tipo_impuesto LIKE :q)";
+         $where .= " AND (
+             r.nombre LIKE :q
+             OR r.numero_orden LIKE :q
+             OR r.numero_oficio LIKE :q
+             OR r.dependencia LIKE :q
+             OR r.tipo_impuesto LIKE :q
+          )";
       }
       if (isset($filters['tipo_revision_id'])) {
          $params[':f_tipo'] = (int)$filters['tipo_revision_id'];
@@ -93,15 +99,49 @@ final class RevisionRepository
       $stc->execute($params);
       $total = (int)$stc->fetchColumn();
 
-      // data
+      // data con JOINs y semáforo (solo en_proceso)
       $sql = "
-        SELECT r.*,
-               rt.nombre AS tipo_revision,
-               DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) AS dias_restantes
+        SELECT 
+          r.*,
+          rt.nombre AS tipo_revision,
+          u.nombre  AS responsable_nombre,
+          u.email   AS responsable_email,
+          a.nombre  AS area_nombre,
+
+          CASE 
+            WHEN r.fecha_vencimiento IS NULL THEN NULL
+            ELSE DATEDIFF(r.fecha_vencimiento, CURRENT_DATE())
+          END AS dias_restantes,
+
+          (r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0) AS is_vencida_proceso,
+          (r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5) AS is_proxima_proceso,
+
+          CASE
+            WHEN r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0 
+              THEN 'red'
+            WHEN r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5 
+              THEN 'yellow'
+            ELSE 'none'
+          END AS semaforo_color,
+
+          CASE
+            WHEN r.estatus <> 'en_proceso' THEN 'sin_alerta'
+            WHEN r.fecha_vencimiento IS NULL THEN 'ok'
+            WHEN DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0 THEN 'vencida'
+            WHEN DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5 THEN 'proxima'
+            ELSE 'ok'
+          END AS semaforo_tag
+
         FROM revision r
         JOIN revision_tipo rt ON rt.id = r.tipo_revision_id
+        LEFT JOIN usuario u   ON u.id  = r.responsable_id
+        LEFT JOIN area a      ON a.id  = r.area_id
         WHERE {$where}
-        ORDER BY r.fecha_vencimiento ASC, r.id DESC
+        ORDER BY
+          (r.estatus = 'en_proceso') DESC,
+          (r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) <= 5) DESC,
+          r.fecha_vencimiento ASC,
+          r.id DESC
         LIMIT :lim OFFSET :off
       ";
       $std = $this->db->prepare($sql);
@@ -119,11 +159,40 @@ final class RevisionRepository
       $params = [':id' => $id];
       $where = 'r.id = :id AND ' . $this->scopeWhere($scope, $params);
       $st = $this->db->prepare("
-         SELECT r.*,
-                rt.nombre AS tipo_revision,
-                DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) AS dias_restantes
+         SELECT 
+            r.*,
+            rt.nombre AS tipo_revision,
+            u.nombre  AS responsable_nombre,
+            u.email   AS responsable_email,
+            a.nombre  AS area_nombre,
+            CASE 
+              WHEN r.fecha_vencimiento IS NULL THEN NULL
+              ELSE DATEDIFF(r.fecha_vencimiento, CURRENT_DATE())
+            END AS dias_restantes,
+
+            (r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0) AS is_vencida_proceso,
+            (r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5) AS is_proxima_proceso,
+
+            CASE
+              WHEN r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0 
+                THEN 'red'
+              WHEN r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5 
+                THEN 'yellow'
+              ELSE 'none'
+            END AS semaforo_color,
+
+            CASE
+              WHEN r.estatus <> 'en_proceso' THEN 'sin_alerta'
+              WHEN r.fecha_vencimiento IS NULL THEN 'ok'
+              WHEN DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0 THEN 'vencida'
+              WHEN DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5 THEN 'proxima'
+              ELSE 'ok'
+            END AS semaforo_tag
+
          FROM revision r
          JOIN revision_tipo rt ON rt.id = r.tipo_revision_id
+         LEFT JOIN usuario u   ON u.id  = r.responsable_id
+         LEFT JOIN area a      ON a.id  = r.area_id
          WHERE {$where}
          LIMIT 1
       ");
@@ -249,7 +318,6 @@ final class RevisionRepository
       return $r ?: null;
    }
 
-
    // ---------- Bitácora ----------
    public function bitacoraAppend(int $revisionId, string $evento, ?array $detalle, ?int $actorId): bool
    {
@@ -286,7 +354,6 @@ final class RevisionRepository
       $st->execute([':rid' => $revisionId]);
       return (int)$st->fetchColumn();
    }
-
 
    public function findRevisionesVencenEl(string $yyyy_mm_dd): array
    {

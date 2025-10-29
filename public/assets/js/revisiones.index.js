@@ -222,6 +222,52 @@
    // =========================
    function initGrid() {
       const gridDiv = document.querySelector('#gridRevisiones');
+      const localeTextEs = {
+         // Textos generales
+         page: 'Página',
+         more: 'Más',
+         to: 'a',
+         of: 'de',
+         next: 'Siguiente',
+         last: 'Última',
+         first: 'Primera',
+         previous: 'Anterior',
+         loadingOoo: 'Cargando...',
+         selectAll: '(Seleccionar todo)',
+         searchOoo: 'Buscar...',
+         blanks: '(vacíos)',
+         filterOoo: 'Filtrar...',
+         equals: 'Igual a',
+         notEqual: 'Distinto de',
+         lessThan: 'Menor que',
+         greaterThan: 'Mayor que',
+         lessThanOrEqual: 'Menor o igual que',
+         greaterThanOrEqual: 'Mayor o igual que',
+         inRange: 'Entre',
+         contains: 'Contiene',
+         notContains: 'No contiene',
+         startsWith: 'Empieza con',
+         endsWith: 'Termina con',
+         noRowsToShow: 'No hay registros para mostrar',
+         pinColumn: 'Fijar columna',
+         autosizeThisColumn: 'Ajustar ancho de esta columna',
+         autosizeAllColumns: 'Ajustar ancho de todas las columnas',
+         resetColumns: 'Restablecer columnas',
+         expandAll: 'Expandir todo',
+         collapseAll: 'Contraer todo',
+         copy: 'Copiar',
+         paste: 'Pegar',
+         export: 'Exportar',
+         csvExport: 'Exportar CSV',
+         excelExport: 'Exportar Excel',
+         group: 'Agrupar',
+         columns: 'Columnas',
+         filters: 'Filtros',
+         applyFilter: 'Aplicar filtro',
+         clearFilter: 'Limpiar filtro',
+         clearAllFilters: 'Limpiar todos los filtros',
+      };
+
 
       const colDefs = [
          { headerName: 'ID', field: 'id', width: 80 },
@@ -231,6 +277,15 @@
          { headerName: 'Ejercicio', field: 'ejercicio', width: 110 },
          { headerName: 'Tipo Revisión', field: 'tipo_revision', flex: 1 },
          { headerName: 'Dependencia', field: 'dependencia', flex: 1 },
+         { headerName: 'Área', field: 'area_nombre', flex: 1 },
+         {
+            headerName: 'Responsable', field: 'responsable_nombre', flex: 1,
+            tooltipValueGetter: p => {
+               const n = p.data?.responsable_nombre || '';
+               const e = p.data?.responsable_email || '';
+               return e ? `${n} <${e}>` : n;
+            }
+         },
 
          {
             headerName: 'Vence en (días)',
@@ -240,36 +295,76 @@
                const v = params.data?.dias_restantes;
                return (v === null || v === undefined) ? null : Number(v);
             },
+            // 👉 ahora condicionamos al semáforo del backend (solo en_proceso)
+            cellRenderer: params => {
+               const d = params.data || {};
+               const est = String(d.estatus || '').toLowerCase();
+
+               if (est !== 'en_proceso') {
+                  // Mostrar chip clara de que ya no aplica el vencimiento
+                  if (est === 'completa') {
+                     return `<span class="chip chip-done" title="Revisión completada"><i class="fas fa-check-circle"></i> </span>`;
+                  }
+                  if (est === 'cancelada') {
+                     return `<span class="chip chip-cancel" title="Revisión cancelada"><i class="fas fa-ban"></i> Cancelada</span>`;
+                  }
+                  // Otros estatus posibles
+                  return `<span class="chip chip-neutral" title="Sin alerta">${est || '—'}</span>`;
+               }
+
+               // en_proceso → seguimos mostrando los días (si aplica)
+               const tag = d.semaforo_tag;   // 'vencida' | 'proxima' | 'ok' | 'sin_alerta'
+               const val = (d.dias_restantes === null || d.dias_restantes === undefined) ? null : Number(d.dias_restantes);
+
+               if (tag === 'vencida') return `<span class="due-num due-over">${Math.abs(val)}</span>`;
+               if (tag === 'proxima') return `<span class="due-num due-soon">${val}</span>`;
+               // ok/sin_alerta → sin color ni número si prefieres (dejo guion fino)
+               return '<span class="text-muted">—</span>';
+            },
+
+            // 👉 Clases de color solo si está en_proceso (el backend ya lo condiciona con semaforo_color)
             cellClass: params => {
-               const d = params.value;
-               if (d === null) return '';
-               if (d <= 0) return 'cell-vencida';
-               if (d <= 5) return 'cell-proxima';
+               const tag = params.data?.semaforo_tag;
+               if (tag === 'vencida') return 'cell-vencida';
+               if (tag === 'proxima') return 'cell-proxima';
                return '';
             },
+
+            // Tooltip claro
             tooltipValueGetter: p => {
-               const d = p.value;
-               if (d === null) return 'Sin cálculo';
-               if (d <= 0) return 'Fecha límite vencida';
-               if (d <= 5) return `Vence en ${d} día(s)`;
-               return `Vence en ${d} día(s)`;
+               const d = p.data || {};
+               const est = String(d.estatus || '').toLowerCase();
+
+               if (est !== 'en_proceso') {
+                  if (est === 'completa') return 'Tarea completada';
+                  if (est === 'cancelada') return 'Tarea cancelada';
+                  return 'Sin alerta';
+               }
+
+               const tag = d.semaforo_tag;
+               const val = (d.dias_restantes === null || d.dias_restantes === undefined) ? null : Number(d.dias_restantes);
+               if (val === null) return 'Sin cálculo';
+               if (tag === 'vencida') return `Vencida · ${Math.abs(val)} día(s) de retraso`;
+               if (tag === 'proxima') return `Próxima · vence en ${val} día(s)`;
+               return `Vence en ${val} día(s)`;
             }
          },
 
          {
             headerName: 'Estatus',
             field: 'estatus',
-            width: 130,
+            width: 150,
             cellRenderer: params => {
                const v = String(params.value || '').toLowerCase();
-               if (v === 'completa') {
-                  return `<span class="status-chip status-completa" title="Completa">
-                      <i class="fas fa-check-circle"></i>
-                    </span>`;
-               }
-               return `<span class="status-chip status-proceso" title="En proceso">
-                    <i class="fas fa-hourglass-half"></i>
-                  </span>`;
+               const map = {
+                  'en_proceso': { cls: 'status-proceso', icon: 'fas fa-hourglass-half', title: 'En proceso' },
+                  'completa': { cls: 'status-completa', icon: 'fas fa-check-circle', title: 'Completa' },
+                  'cancelada': { cls: 'status-cancelada', icon: 'fas fa-ban', title: 'Cancelada' },
+               };
+               const cfg = map[v] || { cls: 'status-proceso', icon: 'fas fa-hourglass-half', title: v || 'Estatus' };
+               return `<span class="status-chip ${cfg.cls}" title="${cfg.title}">
+                         <i class="${cfg.icon}"></i>
+                       </span>`;
             },
             cellClass: 'text-center'
          },
@@ -283,18 +378,11 @@
          rowDeselection: true,
          pagination: true,
          paginationPageSize: 20,
-
-         // Pintar fila según vencimiento
+         localeText: localeTextEs,
+         // 👉 Pintar fila según semáforo DEL BACKEND (solo en_proceso)
          rowClassRules: {
-            'row-overdue': params => {
-               const d = params.data?.dias_restantes;
-               return d !== null && d !== undefined && Number(d) <= 0;
-            },
-            'row-due-soon': params => {
-               const d = params.data?.dias_restantes;
-               const n = (d === null || d === undefined) ? null : Number(d);
-               return n !== null && n > 0 && n <= 5;
-            }
+            'row-overdue': params => params.data?.semaforo_color === 'red',
+            'row-due-soon': params => params.data?.semaforo_color === 'yellow'
          },
 
          // Toggle seleccionar/deseleccionar con un clic
