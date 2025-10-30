@@ -42,10 +42,11 @@ $router->post('/api/logout', [$auth, 'logout']);
 $router->get('/api/csrf', [$auth, 'csrf']);
 
 
-
+//CATALGOS
 $router->get('/api/v1/catalogos/areas', [new AuthMiddleware(), [$cat, 'areas']]);
 $router->get('/api/v1/catalogos/jefes', [new AuthMiddleware(), [$cat, 'jefes']]);
 $router->get('/api/v1/catalogos/roles', [new AuthMiddleware(), [$cat, 'roles']]);
+$router->get('/api/v1/catalogos/empresas', [new AuthMiddleware(), [$cat, 'empresas']]);
 
 $router->get('/api/v1/auth/whoami', [
    new AuthMiddleware(),

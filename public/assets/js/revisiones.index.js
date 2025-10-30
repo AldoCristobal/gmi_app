@@ -66,7 +66,11 @@
    let csrfObj = { token: '' };
    function bearer() { return localStorage.getItem('token') || ''; }
    function authHeaders({ json = false } = {}) {
-      const h = { ...buildCsrfHeaders(csrfObj) };
+      const h = {
+         ...buildCsrfHeaders(csrfObj),
+         'Accept': 'application/json',
+         'X-Requested-With': 'XMLHttpRequest'
+      };
       const tk = bearer();
       if (tk) h['Authorization'] = `Bearer ${tk}`;
       if (json) h['Content-Type'] = 'application/json';
@@ -92,6 +96,8 @@
    let tiposRevision = [];
    let areas = [];
    let responsables = [];
+   let empresas = [];     // cache de empresas (filtradas por scope en backend)
+
    let pondInst = null;   // FilePond (crear)
    let pondAnexos = null; // FilePond (anexos)
 
@@ -223,51 +229,20 @@
    function initGrid() {
       const gridDiv = document.querySelector('#gridRevisiones');
       const localeTextEs = {
-         // Textos generales
-         page: 'Página',
-         more: 'Más',
-         to: 'a',
-         of: 'de',
-         next: 'Siguiente',
-         last: 'Última',
-         first: 'Primera',
-         previous: 'Anterior',
-         loadingOoo: 'Cargando...',
-         selectAll: '(Seleccionar todo)',
-         searchOoo: 'Buscar...',
-         blanks: '(vacíos)',
-         filterOoo: 'Filtrar...',
-         equals: 'Igual a',
-         notEqual: 'Distinto de',
-         lessThan: 'Menor que',
-         greaterThan: 'Mayor que',
-         lessThanOrEqual: 'Menor o igual que',
-         greaterThanOrEqual: 'Mayor o igual que',
-         inRange: 'Entre',
-         contains: 'Contiene',
-         notContains: 'No contiene',
-         startsWith: 'Empieza con',
-         endsWith: 'Termina con',
-         noRowsToShow: 'No hay registros para mostrar',
-         pinColumn: 'Fijar columna',
-         autosizeThisColumn: 'Ajustar ancho de esta columna',
-         autosizeAllColumns: 'Ajustar ancho de todas las columnas',
-         resetColumns: 'Restablecer columnas',
-         expandAll: 'Expandir todo',
-         collapseAll: 'Contraer todo',
-         copy: 'Copiar',
-         paste: 'Pegar',
-         export: 'Exportar',
-         csvExport: 'Exportar CSV',
-         excelExport: 'Exportar Excel',
-         group: 'Agrupar',
-         columns: 'Columnas',
-         filters: 'Filtros',
-         applyFilter: 'Aplicar filtro',
-         clearFilter: 'Limpiar filtro',
-         clearAllFilters: 'Limpiar todos los filtros',
+         page: 'Página', more: 'Más', to: 'a', of: 'de',
+         next: 'Siguiente', last: 'Última', first: 'Primera', previous: 'Anterior',
+         loadingOoo: 'Cargando...', selectAll: '(Seleccionar todo)', searchOoo: 'Buscar...',
+         blanks: '(vacíos)', filterOoo: 'Filtrar...', equals: 'Igual a', notEqual: 'Distinto de',
+         lessThan: 'Menor que', greaterThan: 'Mayor que', lessThanOrEqual: 'Menor o igual que',
+         greaterThanOrEqual: 'Mayor o igual que', inRange: 'Entre', contains: 'Contiene',
+         notContains: 'No contiene', startsWith: 'Empieza con', endsWith: 'Termina con',
+         noRowsToShow: 'No hay registros para mostrar', pinColumn: 'Fijar columna',
+         autosizeThisColumn: 'Ajustar ancho de esta columna', autosizeAllColumns: 'Ajustar ancho de todas las columnas',
+         resetColumns: 'Restablecer columnas', expandAll: 'Expandir todo', collapseAll: 'Contraer todo',
+         copy: 'Copiar', paste: 'Pegar', export: 'Exportar', csvExport: 'Exportar CSV', excelExport: 'Exportar Excel',
+         group: 'Agrupar', columns: 'Columnas', filters: 'Filtros', applyFilter: 'Aplicar filtro',
+         clearFilter: 'Limpiar filtro', clearAllFilters: 'Limpiar todos los filtros',
       };
-
 
       const colDefs = [
          { headerName: 'ID', field: 'id', width: 80 },
@@ -286,51 +261,41 @@
                return e ? `${n} <${e}>` : n;
             }
          },
-
          {
             headerName: 'Vence en (días)',
             field: 'dias_restantes',
-            width: 140,
+            width: 160,
             valueGetter: params => {
                const v = params.data?.dias_restantes;
                return (v === null || v === undefined) ? null : Number(v);
             },
-            // 👉 ahora condicionamos al semáforo del backend (solo en_proceso)
             cellRenderer: params => {
                const d = params.data || {};
                const est = String(d.estatus || '').toLowerCase();
 
                if (est !== 'en_proceso') {
-                  // Mostrar chip clara de que ya no aplica el vencimiento
                   if (est === 'completa') {
-                     return `<span class="chip chip-done" title="Revisión completada"><i class="fas fa-check-circle"></i> </span>`;
+                     return `<span class="chip chip-done" title="Revisión completada"><i class="fas fa-check-circle"></i> Completada</span>`;
                   }
                   if (est === 'cancelada') {
                      return `<span class="chip chip-cancel" title="Revisión cancelada"><i class="fas fa-ban"></i> Cancelada</span>`;
                   }
-                  // Otros estatus posibles
                   return `<span class="chip chip-neutral" title="Sin alerta">${est || '—'}</span>`;
                }
 
-               // en_proceso → seguimos mostrando los días (si aplica)
-               const tag = d.semaforo_tag;   // 'vencida' | 'proxima' | 'ok' | 'sin_alerta'
+               const tag = d.semaforo_tag;
                const val = (d.dias_restantes === null || d.dias_restantes === undefined) ? null : Number(d.dias_restantes);
 
                if (tag === 'vencida') return `<span class="due-num due-over">${Math.abs(val)}</span>`;
                if (tag === 'proxima') return `<span class="due-num due-soon">${val}</span>`;
-               // ok/sin_alerta → sin color ni número si prefieres (dejo guion fino)
                return '<span class="text-muted">—</span>';
             },
-
-            // 👉 Clases de color solo si está en_proceso (el backend ya lo condiciona con semaforo_color)
             cellClass: params => {
                const tag = params.data?.semaforo_tag;
                if (tag === 'vencida') return 'cell-vencida';
                if (tag === 'proxima') return 'cell-proxima';
                return '';
             },
-
-            // Tooltip claro
             tooltipValueGetter: p => {
                const d = p.data || {};
                const est = String(d.estatus || '').toLowerCase();
@@ -349,7 +314,6 @@
                return `Vence en ${val} día(s)`;
             }
          },
-
          {
             headerName: 'Estatus',
             field: 'estatus',
@@ -374,18 +338,15 @@
          columnDefs: colDefs,
          rowData: [],
          rowSelection: 'single',
-         suppressRowClickSelection: true, // para toggle manual
+         suppressRowClickSelection: true,
          rowDeselection: true,
          pagination: true,
          paginationPageSize: 20,
          localeText: localeTextEs,
-         // 👉 Pintar fila según semáforo DEL BACKEND (solo en_proceso)
          rowClassRules: {
             'row-overdue': params => params.data?.semaforo_color === 'red',
             'row-due-soon': params => params.data?.semaforo_color === 'yellow'
          },
-
-         // Toggle seleccionar/deseleccionar con un clic
          onRowClicked: (e) => {
             const api = gridOptions.api;
             const node = e.node;
@@ -398,7 +359,6 @@
             }
             updateButtonsUI();
          },
-
          onSelectionChanged: () => { updateButtonsUI(); },
       };
 
@@ -470,6 +430,29 @@
    }
 
    // =========================
+   // Empresas (scope del usuario, SIN depender del select de área)
+   // =========================
+   async function cargarEmpresas() {
+      try {
+         const url = new URL('/api/v1/catalogos/empresas', location.origin); // backend filtra por scope
+         const res = await fetch(url, { headers: authHeaders(), credentials: 'same-origin' });
+
+         let j;
+         try { j = await res.json(); } catch { j = null; }
+
+         if (!res.ok || !j || j.ok === false) {
+            console.error('Empresas fetch error', { status: res.status, statusText: res.statusText, json: j });
+            empresas = [];
+            return;
+         }
+         empresas = j.data || [];
+      } catch (e) {
+         empresas = [];
+         console.warn('No se pudieron cargar empresas', e);
+      }
+   }
+
+   // =========================
    // Helpers select options
    // =========================
    function renderAreasOptions(sel) {
@@ -498,6 +481,16 @@
          });
    }
 
+   function renderEmpresasOptions(sel) {
+      sel.innerHTML = '<option value="">Seleccione empresa...</option>';
+      (empresas || []).forEach(e => {
+         const opt = document.createElement('option');
+         opt.value = e.id;
+         opt.textContent = e.nombre || (`Empresa ${e.id}`);
+         sel.appendChild(opt);
+      });
+   }
+
    // =========================
    // Modal Upsert (crear / editar)
    // =========================
@@ -516,13 +509,27 @@
 
          const selArea = body.querySelector('select[name="area_id"]');
          const selResp = body.querySelector('select[name="responsable_id"]');
+         const selEmp = body.querySelector('#sel-empresa-edit');
+
          renderAreasOptions(selArea);
          selArea.value = row.area_id;
          renderResponsablesOptions(selResp, parseInt(row.area_id, 10));
          selResp.value = row.responsable_id;
 
+         // Cargar empresas del scope del usuario y preseleccionar por nombre
+         (async () => {
+            await cargarEmpresas();
+            renderEmpresasOptions(selEmp);
+            if (row.nombre) {
+               const found = (empresas || []).find(e => String(e.nombre).toLowerCase() === String(row.nombre).toLowerCase());
+               if (found) selEmp.value = String(found.id);
+            }
+         })();
+
+         // Cambiar área solo afecta responsables (NO empresas)
          selArea.addEventListener('change', () => {
-            renderResponsablesOptions(selResp, parseInt(selArea.value || '0', 10));
+            const aId = parseInt(selArea.value || '0', 10) || null;
+            renderResponsablesOptions(selResp, aId);
          });
 
          const bsModal = new bootstrap.Modal(modal);
@@ -541,10 +548,21 @@
 
          const selArea = body.querySelector('select[name="area_id"]');
          const selResp = body.querySelector('select[name="responsable_id"]');
+         const selEmp = body.querySelector('#sel-empresa');
+
          renderAreasOptions(selArea);
          renderResponsablesOptions(selResp, parseInt(selArea.value || '0', 10));
+
+         // Cargar empresas del scope del usuario (una sola vez)
+         (async () => {
+            await cargarEmpresas();
+            renderEmpresasOptions(selEmp);
+         })();
+
+         // Cambiar área solo afecta responsables (NO empresas)
          selArea.addEventListener('change', () => {
-            renderResponsablesOptions(selResp, parseInt(selArea.value || '0', 10));
+            const aId = parseInt(selArea.value || '0', 10) || null;
+            renderResponsablesOptions(selResp, aId);
          });
 
          const bsModal = new bootstrap.Modal(modal);
@@ -563,8 +581,10 @@
       <form id="form-revision">
         <div class="row g-2">
           <div class="col-md-6">
-            <label class="form-label">Nombre</label>
-            <input type="text" name="nombre" class="form-control form-control-sm" required>
+            <label class="form-label">Empresa</label>
+            <select name="empresa_id" class="custom-select custom-select-sm" required id="sel-empresa">
+              <option value="">Seleccione empresa...</option>
+            </select>
           </div>
           <div class="col-md-3">
             <label class="form-label">Número de Orden</label>
@@ -655,8 +675,10 @@
         <input type="hidden" name="id" value="${row.id}">
         <div class="row g-2">
           <div class="col-md-6">
-            <label class="form-label">Nombre</label>
-            <input type="text" name="nombre" class="form-control form-control-sm" required value="${escapeAttr(row.nombre)}">
+            <label class="form-label">Empresa</label>
+            <select name="empresa_id" class="custom-select custom-select-sm" required id="sel-empresa-edit">
+              <option value="">Seleccione empresa...</option>
+            </select>
           </div>
           <div class="col-md-3">
             <label class="form-label">Número de Orden</label>
@@ -732,7 +754,7 @@
 
    function escapeAttr(v) { return String(v || '').replace(/"/g, '&quot;'); }
    function escapeHtml(v) {
-      return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&gt;');
    }
    function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
@@ -803,8 +825,19 @@
          return;
       }
 
+      // Empresa seleccionada
+      const selEmp = document.querySelector('#sel-empresa');
+      const empresaId = selEmp && selEmp.value ? parseInt(selEmp.value, 10) : null;
+      const empresaNombre = selEmp ? (selEmp.options[selEmp.selectedIndex]?.text || '') : '';
+      if (!empresaId) {
+         window.notify('Seleccione una empresa', 'warning');
+         return;
+      }
+
       const payload = {
          ...data,
+         nombre: empresaNombre,               // guardamos el texto (empresa)
+         empresa_id: empresaId,               // extra por si luego normalizas
          tipo_revision_id: parseInt(data.tipo_revision_id || data.tipo_revision || 0, 10) || undefined,
          area_id: parseInt(data.area_id || '0', 10) || undefined,
          responsable_id: parseInt(data.responsable_id || '0', 10) || undefined,
@@ -839,9 +872,19 @@
       const form = document.querySelector('#form-revision-edit');
       const data = Object.fromEntries(new FormData(form).entries());
 
+      // Empresa seleccionada en edición
+      const selEmpEdit = document.querySelector('#sel-empresa-edit');
+      const empresaId = selEmpEdit && selEmpEdit.value ? parseInt(selEmpEdit.value, 10) : null;
+      const empresaNombre = selEmpEdit ? (selEmpEdit.options[selEmpEdit.selectedIndex]?.text || '') : '';
+      if (!empresaId) {
+         window.notify('Seleccione una empresa', 'warning');
+         return;
+      }
+
       const payload = {
          id: parseInt(id, 10),
-         nombre: data.nombre,
+         nombre: empresaNombre,           // guardamos el texto de la empresa
+         empresa_id: empresaId,           // extra por si luego normalizas
          numero_orden: data.numero_orden || null,
          numero_oficio: data.numero_oficio || null,
          ejercicio: data.ejercicio ? parseInt(data.ejercicio, 10) : null,

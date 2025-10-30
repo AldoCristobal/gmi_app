@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Http\Response;
-use App\Support\DB;
 use PDO;
+use App\Support\DB;
+use App\Http\Response;
 
 final class CatalogosController
 {
@@ -109,6 +109,87 @@ final class CatalogosController
       } catch (\Throwable $e) {
          error_log($e->getMessage());
          \App\Http\Response::json(['ok' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'No se pudo obtener revision_tipos']], 500);
+      }
+   }
+
+   public function empresas(\App\Http\Request $req): void
+   {
+      try {
+         $pdo = \App\Support\DB::pdo();
+
+         // 1) Datos que (idealmente) pone el middleware
+         $scope = $req->attr('scope') ?? [];
+         $user  = $req->attr('user')  ?? [];
+
+         // 2) ¿Es Dirección?
+         $esDireccion = !empty($scope['direccion']) || (isset($user['role']) && $user['role'] === 'direccion');
+
+         // 3) Determinar area_id “efectivo”
+         $areaEfectiva = 0;
+
+         if ($esDireccion) {
+            // Dirección ve todas, no forzamos área
+            $areaEfectiva = 0;
+         } else {
+            // Primero intenta con scope / user
+            $areaEfectiva = (int)($scope['area_id'] ?? $user['area_id'] ?? 0);
+
+            // Fallback: si sigue en 0, lo leemos de BD por el user actual
+            if ($areaEfectiva <= 0 && isset($user['id'])) {
+               $stA = $pdo->prepare("SELECT area_id FROM usuario WHERE id = :id LIMIT 1");
+               $stA->execute([':id' => (int)$user['id']]);
+               $areaEfectiva = (int)($stA->fetchColumn() ?: 0);
+            }
+
+            // Si aún no tenemos área, por seguridad devolvemos lista vacía
+            if ($areaEfectiva <= 0) {
+               \App\Http\Response::json(['ok' => true, 'data' => []], 200);
+               return;
+            }
+         }
+
+         // 4) Filtros opcionales
+         $q                = trim((string)($req->get['q'] ?? ''));
+         $incluyeInactivos = (string)($req->get['inactivos'] ?? '') === '1';
+
+         // 5) WHERE dinámico
+         $where  = $incluyeInactivos ? '1=1' : 'e.activo = 1';
+         $params = [];
+
+         if (!$esDireccion) {
+            $where .= ' AND e.area_id = :a';
+            $params[':a'] = $areaEfectiva;
+         }
+         if ($q !== '') {
+            $where .= ' AND e.nombre LIKE :q';
+            $params[':q'] = '%' . $q . '%';
+         }
+
+         // 6) Consulta
+         $sql = "
+         SELECT e.id, e.nombre, e.area_id
+         FROM empresa e
+         WHERE {$where}
+         ORDER BY e.nombre ASC
+      ";
+         $st = $pdo->prepare($sql);
+         $st->execute($params);
+         $rows = $st->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+
+         foreach ($rows as &$r) {
+            $r['id'] = (int)$r['id'];
+            if (isset($r['area_id'])) $r['area_id'] = (int)$r['area_id'];
+         }
+
+         \App\Http\Response::json(['ok' => true, 'data' => $rows], 200);
+      } catch (\Throwable $e) {
+         // Si quieres ver qué `scope` y `user` llegan realmente, descomenta:
+         // error_log('empresas scope='.json_encode($req->attr('scope')).' user='.json_encode($req->attr('user')));
+
+         \App\Http\Response::json(
+            ['ok' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'No se pudo obtener empresas']],
+            500
+         );
       }
    }
 }
