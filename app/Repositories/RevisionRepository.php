@@ -15,28 +15,66 @@ final class RevisionRepository
       $this->db = DB::pdo();
    }
 
-   /** WHERE + params según scope (direccion/gerencia/auxiliar) */
+   /** WHERE + params según scope (direccion/gerencia/jefe+equipo/auxiliar) */
    private function scopeWhere(array $scope, array &$params): string
    {
-      $w = ['1=1'];
+      // Dirección: sin restricción
       if (!empty($scope['direccion'])) {
-         return implode(' AND ', $w);
+         return '1=1';
       }
+
+      // Gerencia: por área
       if (!empty($scope['gerencia'])) {
-         $w[] = 'r.area_id = :area_id';
-         $params[':area_id'] = (int)$scope['area_id'];
-         return implode(' AND ', $w);
+         $params[':area_id'] = (int)($scope['area_id'] ?? 0);
+         return 'r.area_id = :area_id';
       }
-      if (!empty($scope['auxiliar'])) {
-         $w[] = 'r.responsable_id = :uid';
-         $params[':uid'] = (int)$scope['user_id'];
-         return implode(' AND ', $w);
+
+      // Operativo (auxiliar o jefe/supervisor)
+      $userId  = isset($scope['user_id']) ? (int)$scope['user_id'] : 0;
+      $areaId  = isset($scope['area_id']) ? (int)$scope['area_id'] : 0;
+      $auxOnly = !empty($scope['auxiliar']); // si viene marcado explícitamente “auxiliar”
+
+      if ($userId > 0) {
+         // Buscar subordinados directos (equipo)
+         $subIds = [];
+         try {
+            $st = $this->db->prepare("SELECT id FROM usuario WHERE activo=1 AND jefe_id=:uid");
+            $st->execute([':uid' => $userId]);
+            $subIds = array_map('intval', $st->fetchAll(\PDO::FETCH_COLUMN) ?: []);
+         } catch (\Throwable $e) {
+            $subIds = [];
+         }
+
+         if (!empty($subIds) && !$auxOnly) {
+            // Jefe/supervisor: responsable_id IN (yo + equipo)
+            $all = array_merge([$userId], $subIds);
+            $in  = [];
+            foreach ($all as $i => $uid) {
+               $ph = ":uid{$i}";
+               $in[] = $ph;
+               $params[$ph] = $uid;
+            }
+            return 'r.responsable_id IN (' . implode(',', $in) . ')';
+         }
+
+         // Si está marcado como auxiliar -> solo lo suyo
+         if ($auxOnly) {
+            $params[':uid'] = $userId;
+            return 'r.responsable_id = :uid';
+         }
+
+         // Sin equipo: si hay area_id en scope, filtramos por área; si no, solo lo suyo
+         if ($areaId > 0) {
+            $params[':area_id'] = $areaId;
+            return 'r.area_id = :area_id';
+         }
+
+         $params[':uid'] = $userId;
+         return 'r.responsable_id = :uid';
       }
-      if (!empty($scope['area_id'])) {
-         $w[] = 'r.area_id = :area_id';
-         $params[':area_id'] = (int)$scope['area_id'];
-      }
-      return implode(' AND ', $w);
+
+      // Fallback seguro: nada
+      return '1=0';
    }
 
    /** Listado con filtros + paginación (JOINs + semáforo condicionado) */

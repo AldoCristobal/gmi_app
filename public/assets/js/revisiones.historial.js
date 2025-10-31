@@ -100,9 +100,20 @@
                if (row) openDetalle(row.id, row.nombre);
             }
          },
+         // 👉 Solo pintar si está EN PROCESO. Si es COMPLETA (u otro estatus), no pintamos.
          rowClassRules: {
-            'row-overdue': p => p.data?.dias_restantes <= 0,
-            'row-due-soon': p => p.data?.dias_restantes > 0 && p.data?.dias_restantes <= 5
+            'row-overdue': p => {
+               const est = String(p.data?.estatus || '').toLowerCase();
+               const d = (p.data?.dias_restantes === null || p.data?.dias_restantes === undefined)
+                  ? null : Number(p.data.dias_restantes);
+               return est === 'en_proceso' && d !== null && d <= 0;
+            },
+            'row-due-soon': p => {
+               const est = String(p.data?.estatus || '').toLowerCase();
+               const d = (p.data?.dias_restantes === null || p.data?.dias_restantes === undefined)
+                  ? null : Number(p.data.dias_restantes);
+               return est === 'en_proceso' && d !== null && d > 0 && d <= 5;
+            }
          }
       };
       new agGrid.Grid(gridDiv, gridOptions);
@@ -175,20 +186,20 @@
              <div class="card bg-dark border-secondary mb-2 shadow-none">
                <div class="card-header py-2 px-3 card-head-compact">
                  <strong class="mr-1">Evidencia inicial</strong>
-                 ${inicial ? `<span class="badge badge-primary">v${inicial.version || 1}  </span>` : ''}
+                 ${inicial ? `<span class="badge badge-primary">v${inicial.version || 1}</span>` : ''}
                </div>
                <div class="card-body py-2 px-2">
-                 ${inicial ? docRowCompact(inicial, rev.id) : '<em   class="text-muted">Sin evidencia inicial</em>'}
+                 ${inicial ? docRowCompact(inicial, rev.id) : '<em class="text-muted">Sin evidencia inicial</em>'}
                </div>
              </div>
 
              <div class="card bg-dark border-secondary shadow-none">
                <div class="card-header py-2 px-3 card-head-compact">
                  <strong class="mr-1">Anexos</strong>
-                 ${anexos.length ? `<span class="badge badge-secondary">${anexos.length}  </span>` : ''}
+                 ${anexos.length ? `<span class="badge badge-secondary">${anexos.length}</span>` : ''}
                </div>
                <div class="card-body py-2 px-2">
-                 ${anexos.length ? anexos.map(d => docRowCompact(d, rev.id)).join('') :   '<em class="text-muted">Sin anexos</em>'}
+                 ${anexos.length ? anexos.map(d => docRowCompact(d, rev.id)).join('') : '<em class="text-muted">Sin anexos</em>'}
                </div>
              </div>
            </div>
@@ -197,7 +208,6 @@
 
       if (window.__applyGates) window.__applyGates(body);
    }
-
 
    // ========= Helpers =========
    function dl(label, value, isHtml = false) {
@@ -220,7 +230,6 @@
     <dd class="col-12 dd-tight">${v}</dd>
   `;
    }
-
 
    function fmtDate(s) { return s ? String(s).substring(0, 10) : '—'; }
    function statusBadge(st) {
