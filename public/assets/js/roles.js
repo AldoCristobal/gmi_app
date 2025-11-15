@@ -74,6 +74,9 @@
    const mapIdToClave = new Map();   // 12 -> "usuarios.ver"
    let _assignedIds = new Set();     // baseline persistida (ids)
 
+   // ---- Modal state ----
+   let modalIsOpen = false;
+
    // ---- Utilidades ----
    function getCsrfToken() {
       const m = document.querySelector('meta[name="csrf-token"]');
@@ -212,12 +215,68 @@
       }
    }
 
-   // ---- Modal Nuevo / Editar ----
+   // ---- Modal Nuevo / Editar (con fade, Esc y click fuera) ----
+   function showModal() {
+      if (!modalEl || modalIsOpen) return;
+
+      modalEl.style.display = 'block';
+      modalEl.removeAttribute('aria-hidden');
+      modalEl.setAttribute('aria-modal', 'true');
+
+      // Backdrop
+      let backdrop = document.querySelector('.modal-backdrop');
+      if (!backdrop) {
+         backdrop = document.createElement('div');
+         backdrop.className = 'modal-backdrop fade';
+         document.body.appendChild(backdrop);
+         // trigger transition
+         requestAnimationFrame(() => {
+            backdrop.classList.add('show');
+         });
+      }
+
+      document.body.classList.add('modal-open');
+
+      // trigger fade-in de la modal
+      requestAnimationFrame(() => {
+         modalEl.classList.add('show');
+      });
+
+      modalIsOpen = true;
+   }
+
+   function closeModal() {
+      if (!modalEl || !modalIsOpen) return;
+
+      const backdrop = document.querySelector('.modal-backdrop');
+
+      modalEl.classList.remove('show');
+      modalEl.setAttribute('aria-hidden', 'true');
+      modalEl.removeAttribute('aria-modal');
+
+      if (backdrop) backdrop.classList.remove('show');
+
+      // timeout para dejar terminar la transición fade
+      setTimeout(() => {
+         modalEl.style.display = 'none';
+         if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+         document.body.classList.remove('modal-open');
+      }, 150);
+
+      modalIsOpen = false;
+   }
+
    function openModal(create = true, row = null) {
+      if (!modalEl) return;
+
       if (create) {
          modalTitle.textContent = 'Nuevo rol';
-         fId.value = ''; fNombre.value = ''; fSlug.value = ''; fDesc.value = '';
-         fPrio.value = '100'; fActivo.value = '1';
+         fId.value = '';
+         fNombre.value = '';
+         fSlug.value = '';
+         fDesc.value = '';
+         fPrio.value = '100';
+         fActivo.value = '1';
       } else if (row) {
          modalTitle.textContent = 'Editar rol';
          fId.value = row.id;
@@ -227,22 +286,35 @@
          fPrio.value = row.prioridad ?? 100;
          fActivo.value = row.activo ? '1' : '0';
       }
-      modalEl.classList.add('show');
-      modalEl.style.display = 'block';
-      document.body.classList.add('modal-open');
-      if (!document.querySelector('.modal-backdrop')) {
-         const bd = document.createElement('div');
-         bd.className = 'modal-backdrop fade show';
-         document.body.appendChild(bd);
+
+      showModal();
+   }
+
+   // Cerrar con X y botones data-dismiss="modal"
+   if (modalEl) {
+      const closeEls = modalEl.querySelectorAll('[data-dismiss="modal"], .close');
+      closeEls.forEach(el => {
+         el.addEventListener('click', function (e) {
+            e.preventDefault();
+            closeModal();
+         });
+      });
+   }
+
+   // Cerrar con click fuera (overlay)
+   document.addEventListener('click', function (e) {
+      if (!modalIsOpen || !modalEl) return;
+      if (e.target === modalEl) {
+         closeModal();
       }
-   }
-   function closeModal() {
-      modalEl.classList.remove('show');
-      modalEl.style.display = 'none';
-      document.querySelector('.modal-backdrop')?.remove();
-      document.body.classList.remove('modal-open');
-   }
-   modalEl?.querySelector('.close')?.addEventListener('click', closeModal);
+   });
+
+   // Cerrar con ESC
+   document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modalIsOpen) {
+         closeModal();
+      }
+   });
 
    // ---- Guardar Rol ----
    async function saveRole() {

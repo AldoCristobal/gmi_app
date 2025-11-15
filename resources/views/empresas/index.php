@@ -17,7 +17,7 @@
 
 <section>
    <div>
-      <!-- Toolbar de filtros / acciones -->
+      <!-- Toolbar de filtros / búsqueda -->
       <div class="card card-dark">
          <div class="card-body">
             <div class="row g-2 align-items-end">
@@ -38,47 +38,70 @@
                   </select>
                </div>
 
+               <!-- Solo botón Buscar se queda aquí -->
                <div class="col-md-4 text-end">
-                  <button id="emp-btn-search" class="btn btn-outline-secondary btn-sm me-2">
-                     <i class="fas fa-search"></i> Buscar
-                  </button>
-
-                  <!-- Nuevo / Editar (botón combinado) -->
-                  <button id="emp-btn-new"
-                     class="btn btn-success btn-sm me-2"
-                     data-perm="empresa.crear empresa.editar"
-                     data-perm-any
-                     data-perm-mode="disable">
-                     <i class="fas fa-plus"></i> Nuevo
-                  </button>
-
-                  <button id="emp-btn-delete"
-                     class="btn btn-danger btn-sm me-2"
-                     data-perm="empresa.borrar"
-                     data-perm-mode="disable">
-                     <i class="fas fa-trash"></i> Eliminar
-                  </button>
-
-                  <button id="emp-btn-expediente"
-                     class="btn btn-outline-info btn-sm me-2"
-                     data-perm="empresa.expediente"
-                     data-perm-mode="disable">
-                     <i class="fas fa-folder-open"></i> Expediente
-                  </button>
-
-                  <button id="emp-btn-oblig" class="btn btn-outline-warning btn-sm me-2"
-                     data-perm="empresa.obligacion.ver"
-                     data-perm-mode="disable"
-                     title="Ver y asignar obligaciones a la empresa seleccionada">
-                     <i class="fas fa-list-check"></i> Obligaciones
+                  <button id="emp-btn-search" class="btn btn-outline-secondary btn-sm">
+                     <i class="fas fa-search"></i>
+                     <span class="d-none d-sm-inline">Buscar</span>
                   </button>
                </div>
             </div>
          </div>
       </div>
 
-      <!-- Grid -->
+      <!-- Grid + mini-toolbar AG Grid -->
       <div class="card card-dark">
+         <!-- Mini-toolbar sobre el grid -->
+         <div class="card-header py-2">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+               <small class="text-muted mb-1 mb-sm-0">
+                  Empresas registradas
+               </small>
+
+               <div class="btn-toolbar mb-1 mb-sm-0" role="toolbar" aria-label="Acciones empresas">
+
+                  <!-- Nuevo / Editar -->
+                  <button id="emp-btn-new"
+                     class="btn btn-outline-success btn-sm me-2"
+                     data-perm="empresa.crear empresa.editar"
+                     data-perm-any
+                     data-perm-mode="disable"
+                     title="Nueva empresa / Editar selección">
+                     <i class="fas fa-pen-to-square"></i>
+                  </button>
+
+                  <!-- Eliminar -->
+                  <button id="emp-btn-delete"
+                     class="btn btn-outline-danger btn-sm me-2"
+                     data-perm="empresa.borrar"
+                     data-perm-mode="disable"
+                     title="Eliminar empresa seleccionada">
+                     <i class="fas fa-trash"></i>
+                  </button>
+
+                  <!-- Expediente -->
+                  <button id="emp-btn-expediente"
+                     class="btn btn-outline-info btn-sm me-2"
+                     data-perm="empresa.expediente"
+                     data-perm-mode="disable"
+                     title="Expediente de la empresa">
+                     <i class="fas fa-folder-open"></i>
+                  </button>
+
+                  <!-- Obligaciones -->
+                  <button id="emp-btn-oblig"
+                     class="btn btn-outline-warning btn-sm"
+                     data-perm="empresa.obligacion.ver"
+                     data-perm-mode="disable"
+                     title="Obligaciones de la empresa">
+                     <i class="fas fa-list-check"></i>
+                  </button>
+
+               </div>
+            </div>
+         </div>
+
+
          <div class="card-body p-0">
             <div id="gridEmpresas" class="ag-theme-alpine-dark" style="height: 62vh; width: 100%;"></div>
          </div>
@@ -272,36 +295,77 @@
    </div>
 
    <div class="drawer-body p-3">
-      <!-- Barra superior minimalista -->
+      <!-- Barra superior: búsqueda + mini-toolbar -->
       <div class="ag-theme-alpine-dark rounded mb-3 p-2">
-         <div class="d-flex align-items-center gap-2">
-            <div class="input-group flex-grow-1">
+         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+
+            <!-- Buscador -->
+            <div class="input-group flex-grow-1 mb-2 mb-md-0">
                <span class="input-group-text bg-dark border-0">
                   <i class="fas fa-search text-muted"></i>
                </span>
-               <input id="oblig-search" type="text" class="form-control form-control-sm bg-dark text-light"
-                  placeholder="Buscar..." style="border: none;">
+               <input id="oblig-search"
+                  type="text"
+                  class="form-control form-control-sm bg-dark text-light"
+                  placeholder="Buscar..."
+                  style="border: none;">
             </div>
 
-            <button id="oblig-refresh" class="btn btn-sm btn-outline-secondary" title="Actualizar lista" data-bs-toggle="tooltip">
-               <i class="fas fa-rotate-right"></i>
-            </button>
+            <!-- Mini toolbar -->
+            <div class="btn-toolbar ms-md-2" role="toolbar" aria-label="Acciones árbol">
+               <div class="btn-group btn-group-sm me-1 mb-1" role="group" aria-label="Expandir / Contraer">
+                  <button id="oblig-expand-all"
+                     type="button"
+                     class="btn btn-outline-light"
+                     title="Expandir todo">
+                     <i class="fas fa-plus-square"></i>
+                  </button>
+                  <button id="oblig-collapse-all"
+                     type="button"
+                     class="btn btn-outline-light"
+                     title="Contraer todo">
+                     <i class="fas fa-minus-square"></i>
+                  </button>
+               </div>
 
-            <button id="oblig-btn-sync" class="btn btn-sm btn-primary" title="Guardar selección"
-               data-perm="empresa.obligacion.editar empresa.obligacion.asignar empresa.obligacion.borrar"
-               data-perm-any data-perm-mode="disable" data-bs-toggle="tooltip">
-               <i class="fas fa-save"></i>
-            </button>
+               <div class="btn-group btn-group-sm me-1 mb-1" role="group" aria-label="Marcar / Desmarcar">
+                  <button id="oblig-select-all"
+                     type="button"
+                     class="btn btn-outline-light"
+                     title="Marcar todas las obligaciones">
+                     <i class="fas fa-check-square"></i>
+                  </button>
+                  <button id="oblig-deselect-all"
+                     type="button"
+                     class="btn btn-outline-light"
+                     title="Desmarcar todas las obligaciones">
+                     <i class="far fa-square"></i>
+                  </button>
+               </div>
 
-            <div class="ms-2">
-               <span class="badge bg-secondary" id="oblig-count-cat">0</span>
-               <span class="badge bg-info" id="oblig-count-asg">0</span>
+               <div class="btn-group btn-group-sm mb-1" role="group" aria-label="Refrescar / Guardar">
+                  <button id="oblig-refresh"
+                     type="button"
+                     class="btn btn-outline-secondary"
+                     title="Actualizar lista">
+                     <i class="fas fa-rotate-right"></i>
+                  </button>
+
+                  <button id="oblig-btn-sync"
+                     type="button"
+                     class="btn btn-primary"
+                     title="Guardar selección"
+                     data-perm="empresa.obligacion.editar empresa.obligacion.asignar empresa.obligacion.borrar"
+                     data-perm-any
+                     data-perm-mode="disable">
+                     <i class="fas fa-save"></i>
+                  </button>
+               </div>
             </div>
          </div>
       </div>
 
       <div class="row g-3">
-         <!-- Izquierda: Árbol + Asignadas -->
          <div class="col-12">
             <div class="card card-dark mb-3">
                <div class="card-header py-2"><strong>Catálogo</strong></div>
@@ -309,10 +373,7 @@
                   <div id="oblig-tree" class="fancytree-dark" style="min-height: 320px;"></div>
                </div>
             </div>
-
-            
          </div>
-         <!-- (Se eliminó la columna con el formulario de rutinas) -->
       </div>
    </div>
 </div>

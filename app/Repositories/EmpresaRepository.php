@@ -10,6 +10,7 @@ use App\Support\DB;
 final class EmpresaRepository
 {
    private PDO $db;
+   
    public function __construct()
    {
       $this->db = DB::pdo();

@@ -20,10 +20,12 @@
    } catch (e) {
       console.warn('Notyf no encontrado; se usarán logs de consola.');
    }
+
    function toast(type, message) {
       if (_notyf) _notyf.open({ type: type, message: message });
       else (type === 'error' ? console.error : console.log)(message);
    }
+
    window.__emp_toast = toast;
 
    function canPerm(p) {
@@ -36,6 +38,7 @@
       if (!fallbackMsg) fallbackMsg = 'Error al procesar la solicitud';
       console.error(err);
       var status = (err && (err.status || err.code)) || null;
+
       if (status === 401) toast('warning', 'Sesión expirada o no autenticado (401).');
       else if (status === 403 || status === 'FORBIDDEN') {
          var missing = (err && err.payload && err.payload.error && err.payload.error.message) ? err.payload.error.message : '';
@@ -63,10 +66,12 @@
       }
       return '';
    }
+
    function getMetaCsrf() {
       var meta = document.querySelector('meta[name="csrf-token"]');
       return (meta && meta.content) ? meta.content : '';
    }
+
    function getCsrf() {
       return new Promise(function (resolve) {
          var meta = getMetaCsrf();
@@ -544,8 +549,10 @@
          });
       }
 
-      // ---- Modal Empresa (CRUD) (sin cambios funcionales) ----
+      // ---- Modal Empresa (CRUD) ----
+      var hasBsModal = (window.jQuery && jQuery.fn && typeof jQuery.fn.modal === 'function');
       var modalIsOpen = false;
+
       function resetForm() {
          if (fId) fId.value = '';
          if (fCli) fCli.value = '';
@@ -563,36 +570,79 @@
          if (fAct) fAct.value = '';
          if (fEdoDom) fEdoDom.value = 'LOCALIZADO';
       }
+
       function showModal() {
+         if (!modalEl) return;
+
+         if (hasBsModal) {
+            // Usar Bootstrap: animación, backdrop, ESC, click fuera
+            jQuery(modalEl).modal({
+               backdrop: true,
+               keyboard: true,
+               show: true
+            });
+            modalIsOpen = true;
+            return;
+         }
+
+         // Fallback manual (sin Bootstrap)
          modalEl.classList.add('show');
          modalEl.style.display = 'block';
          modalEl.removeAttribute('aria-hidden');
          modalEl.setAttribute('aria-modal', 'true');
-         if (!document.querySelector('.modal-backdrop')) {
-            var bd = document.createElement('div');
+
+         var bd = document.querySelector('.modal-backdrop');
+         if (!bd) {
+            bd = document.createElement('div');
             bd.className = 'modal-backdrop fade show';
+            bd.addEventListener('click', function () {
+               hideModal();
+            });
             document.body.appendChild(bd);
          }
          document.body.classList.add('modal-open');
          modalIsOpen = true;
       }
+
       function hideModal() {
+         if (!modalEl) return;
+
+         if (hasBsModal) {
+            jQuery(modalEl).modal('hide');
+            modalIsOpen = false;
+            return;
+         }
+
+         // Fallback manual (sin Bootstrap)
          modalEl.classList.remove('show');
          modalEl.style.display = 'none';
          modalEl.setAttribute('aria-hidden', 'true');
          modalEl.removeAttribute('aria-modal');
-         var bd = document.querySelector('.modal-backdrop');
-         if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+
+         var bds = document.querySelectorAll('.modal-backdrop');
+         bds.forEach(function (bd) {
+            if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+         });
+
          document.body.classList.remove('modal-open');
          modalIsOpen = false;
       }
+
+      // Cierre con botones (X, Cerrar)
       if (modalEl) {
-         var _btnClose = modalEl.querySelector('[data-dismiss="modal"], .close');
-         if (_btnClose) {
-            _btnClose.addEventListener('click', function (e) { e.preventDefault(); hideModal(); });
-         }
+         var closeButtons = modalEl.querySelectorAll('[data-dismiss="modal"], [data-bs-dismiss="modal"], .close');
+         closeButtons.forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+               e.preventDefault();
+               hideModal();
+            });
+         });
       }
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modalIsOpen) hideModal(); });
+
+      // Cierre con ESC para Empresa
+      document.addEventListener('keydown', function (e) {
+         if (e.key === 'Escape' && modalIsOpen) hideModal();
+      });
 
       function openCreate() {
          return new Promise(function (resolve) {
@@ -705,7 +755,7 @@
          });
       }
 
-      // Expediente: abrir modal (restaurado, sin tocar más UI)
+      // Expediente: abrir modal
       if (btnExp) btnExp.addEventListener('click', function () {
          var row = getSelectedRow();
          if (!row) { toast('warning', 'Selecciona una empresa'); return; }
@@ -723,13 +773,35 @@
 
          var openModal = function () {
             if (!modalExpEl) return;
+
+            if (hasBsModal) {
+               jQuery(modalExpEl).modal({
+                  backdrop: true,
+                  keyboard: true,
+                  show: true
+               });
+               return;
+            }
+
+            // Fallback manual
             modalExpEl.classList.add('show');
             modalExpEl.style.display = 'block';
             modalExpEl.removeAttribute('aria-hidden');
             modalExpEl.setAttribute('aria-modal', 'true');
+
             if (!document.querySelector('.modal-backdrop')) {
                var bd2 = document.createElement('div');
                bd2.className = 'modal-backdrop fade show';
+               bd2.addEventListener('click', function () {
+                  // cerrar expediente en fallback
+                  modalExpEl.classList.remove('show');
+                  modalExpEl.style.display = 'none';
+                  modalExpEl.setAttribute('aria-hidden', 'true');
+                  modalExpEl.removeAttribute('aria-modal');
+                  var bd = document.querySelector('.modal-backdrop');
+                  if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+                  document.body.classList.remove('modal-open');
+               });
                document.body.appendChild(bd2);
             }
             document.body.classList.add('modal-open');
@@ -741,8 +813,16 @@
             openModal();
          }
       });
+
+      // ESC para modal de expediente (solo en fallback, con Bootstrap él lo maneja solo)
       document.addEventListener('keydown', function (e) {
-         if (e.key === 'Escape' && modalExpEl && modalExpEl.classList.contains('show')) {
+         if (e.key !== 'Escape') return;
+         if (!modalExpEl) return;
+         if (hasBsModal) {
+            // si está visible, Bootstrap ya lo cierra, no hacemos nada extra
+            return;
+         }
+         if (modalExpEl.classList.contains('show')) {
             modalExpEl.classList.remove('show');
             modalExpEl.style.display = 'none';
             modalExpEl.setAttribute('aria-hidden', 'true');
@@ -830,6 +910,10 @@
    var countCat = document.getElementById('oblig-count-cat');
    var countAsg = document.getElementById('oblig-count-asg');
    var btnRefresh = document.getElementById('oblig-refresh');
+   var btnExpandAll = document.getElementById('oblig-expand-all');
+   var btnCollapseAll = document.getElementById('oblig-collapse-all');
+   var btnSelectAll = document.getElementById('oblig-select-all');
+   var btnDeselectAll = document.getElementById('oblig-deselect-all');
    var btnSync = document.getElementById('oblig-btn-sync');
 
    var treeEl = document.getElementById('oblig-tree');
@@ -1037,6 +1121,56 @@
       if (!_empresaSel || !_empresaSel.id) return;
       loadAsignadas(_empresaSel.id);
    });
+
+   // Expandir todo
+   if (btnExpandAll) {
+      btnExpandAll.addEventListener('click', function () {
+         if (!_tree) return;
+         var root = _tree.getRootNode();
+         root.visit(function (node) {
+            if (node.children && node.children.length) {
+               node.setExpanded(true);
+            }
+         });
+      });
+   }
+
+   // Contraer todo
+   if (btnCollapseAll) {
+      btnCollapseAll.addEventListener('click', function () {
+         if (!_tree) return;
+         var root = _tree.getRootNode();
+         root.visit(function (node) {
+            if (node.children && node.children.length) {
+               node.setExpanded(false);
+            }
+         });
+      });
+   }
+
+   // Marcar todas las obligaciones
+   if (btnSelectAll) {
+      btnSelectAll.addEventListener('click', function () {
+         if (!_tree) return;
+         var root = _tree.getRootNode();
+         root.visit(function (node) {
+            if (!node.folder) {
+               node.setSelected(true);
+            }
+         });
+      });
+   }
+
+   // Desmarcar todas las obligaciones
+   if (btnDeselectAll) {
+      btnDeselectAll.addEventListener('click', function () {
+         if (!_tree) return;
+         _tree.getRootNode().visit(function (node) {
+            node.setSelected(false);
+         });
+      });
+   }
+
 
    // Abrir drawer desde toolbar
    if (openBtn) openBtn.addEventListener('click', function () {

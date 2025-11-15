@@ -743,3 +743,106 @@
    color: #8d6e00 !important;
    font-weight: 600;
 }
+/* ========== Drawer Obligaciones: Dark theme para FancyTree ========== */
+
+#oblig-drawer .fancytree-container {
+  background-color: #111827; /* gris muy oscuro */
+  border-color: #374151;
+  color: #e5e7eb;
+  font-size: 0.875rem;
+}
+
+/* Quitar el fondo blanco de cada fila */
+#oblig-drawer .fancytree-container .fancytree-node {
+  background-color: transparent !important;
+}
+
+/* Color de texto de los títulos */
+#oblig-drawer .fancytree-title {
+  color: #e5e7eb;
+}
+
+/* Hover de filas */
+#oblig-drawer .fancytree-node:hover .fancytree-title {
+  background-color: #1f2937;
+  color: #ffffff;
+}
+
+/* Seleccionadas (checkbox marcado) */
+#oblig-drawer .fancytree-node.fancytree-selected .fancytree-title {
+  background-color: #065f46; /* verde oscuro */
+  color: #ffffff;
+}
+
+/* Líneas separadoras más discretas */
+#oblig-drawer .fancytree-container tr,
+#oblig-drawer .fancytree-container td {
+  border-color: #374151;
+}
+
+/* Iconos de carpeta / checkbox */
+#oblig-drawer .fancytree-expander,
+#oblig-drawer .fancytree-icon,
+#oblig-drawer .fancytree-checkbox {
+  filter: brightness(0.9);
+}
+
+/* ========== Toolbar del drawer (botones y contadores) ========== */
+
+/* Contenedor del toolbar si lo tienes como fila arriba del árbol */
+#oblig-drawer .oblig-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;              /* separación entre botones */
+}
+
+/* Si no tienes clase .oblig-toolbar, al menos da margen a los botones */
+#oblig-refresh,
+#oblig-btn-sync {
+  margin-left: 0.25rem;
+}
+
+/* Contadores (66 / 66) como badges compactos */
+#oblig-count-cat,
+#oblig-count-asg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  padding: 0 0.3rem;
+  margin-left: 0.15rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background-color: #111827;
+  color: #f9fafb;
+  border: 1px solid #1f2937;
+}
+
+/* Para que los botones se vean más integrados */
+#oblig-drawer .btn.btn-xs,
+#oblig-drawer .btn.btn-sm {
+  padding: 0.22rem 0.45rem;
+  border-radius: 0.35rem;
+}
+
+
+/* Fondo oscuro del árbol en el drawer */
+#oblig-tree.fancytree-dark {
+   background-color: #111;
+   color: #eee;
+}
+
+/* Quitar highlight fuerte cuando un nodo está seleccionado */
+#oblig-tree .fancytree-node.fancytree-selected > .fancytree-content,
+#oblig-tree .fancytree-node.fancytree-selected.fancytree-active > .fancytree-content {
+   background-color: transparent !important;
+   box-shadow: none !important;
+}
+
+/* Mantener solo un foco muy sutil en el nodo activo (opcional) */
+#oblig-tree .fancytree-node.fancytree-active > .fancytree-content {
+   background-color: rgba(255,255,255,0.03);
+   border-radius: 2px;
+}

@@ -2,6 +2,7 @@
 (function () {
    // ===== Config =====
    const USE_DETAIL_FALLBACK = true; // si no viene roles_ids en la fila, hace GET /api/v1/admin/usuarios/{id}
+   const MODAL_TRANSITION_MS = 150;  // tiempo aprox. de transición de Bootstrap
 
    // ===== Notificaciones (Notyf) =====
    let _notyf = null;
@@ -144,8 +145,6 @@
          rowData: [],
          animateRows: true,
          rowHeight: 42,
-         // Nota: en AG Grid v29, normalmente rowSelection es 'single'/'multiple'.
-         // Dejas este patrón si ya te funciona en tu versión.
          rowSelection: { mode: 'singleRow', enableClickSelection: false },
          onRowClicked: (e) => {
             e.node.setSelected(!e.node.isSelected(), true); // toggle; true = limpia otras filas
@@ -180,13 +179,11 @@
       // ---- Botones estado según selección + permisos ----
       async function updateActionButtons() {
          const selected = getSelectedRow();
+         const canPermLocal = (p) => window.__canPerm ? window.__canPerm(p) : Promise.resolve(false);
 
-         // si tienes el helper global; si no, es permisivo (true)
-         const canPerm = (p) => window.__canPerm ? window.__canPerm(p) : Promise.resolve(false);
-
-         const canCreate = await canPerm('admin.users.crear');
-         const canEdit = await canPerm('admin.users.editar');
-         const canDelete = await canPerm('admin.users.borrar');
+         const canCreate = await canPermLocal('admin.users.crear');
+         const canEdit = await canPermLocal('admin.users.editar');
+         const canDelete = await canPermLocal('admin.users.borrar');
 
          if (selected) {
             // Modo EDITAR
@@ -206,7 +203,6 @@
             setEnabled(btnNew, !!canCreate);
             if (btnNew) btnNew.title = canCreate ? 'Registrar nuevo usuario' : 'No autorizado para crear';
 
-            // Sin selección no se debe borrar
             if (btnDelete) {
                setEnabled(btnDelete, false);
                btnDelete.title = 'Selecciona un usuario para eliminar';
@@ -214,14 +210,27 @@
          }
       }
 
-      // ---- Modal robusto ----
+      // ---- Modal robusto (con animación fade correcta) ----
       let modalIsOpen = false;
 
+      function createBackdrop() {
+         let bd = document.querySelector('.modal-backdrop.user-modal-backdrop');
+         if (!bd) {
+            bd = document.createElement('div');
+            bd.className = 'modal-backdrop fade user-modal-backdrop';
+            bd.addEventListener('click', () => {
+               if (modalIsOpen) closeModal();
+            });
+            document.body.appendChild(bd);
+            // Forzar reflow y luego agregar show para animación fade
+            void bd.offsetWidth;
+            bd.classList.add('show');
+         }
+      }
+
       async function openModal(create = true, data = null) {
-         // evitar doble apertura
          if (modalIsOpen) closeModal();
 
-         // cargar catálogos una vez
          if (!_catalogsLoaded) {
             try { AppLoader?.show('Cargando catálogos…'); await loadCatalogs(); }
             finally { AppLoader?.hide(); _catalogsLoaded = true; }
@@ -246,43 +255,69 @@
             if (pwdGroup) pwdGroup.style.display = 'none';
          }
 
-         // mostrar modal (bootstrap manual)
-         modalEl.classList.add('show');
+         // Mostrar modal con animación fade
          modalEl.style.display = 'block';
          modalEl.removeAttribute('aria-hidden');
          modalEl.setAttribute('aria-modal', 'true');
 
-         if (!document.querySelector('.modal-backdrop')) {
-            const bd = document.createElement('div');
-            bd.className = 'modal-backdrop fade show';
-            document.body.appendChild(bd);
-         }
+         // Forzar reflow y luego agregar show (para que el fade funcione)
+         void modalEl.offsetWidth;
+         modalEl.classList.add('show');
+
+         createBackdrop();
          document.body.classList.add('modal-open');
          modalIsOpen = true;
       }
 
       function closeModal() {
-         modalEl.classList.remove('show');
-         modalEl.style.display = 'none';
-         modalEl.setAttribute('aria-hidden', 'true');
-         modalEl.removeAttribute('aria-modal');
-         document.querySelector('.modal-backdrop')?.remove();
-         document.body.classList.remove('modal-open');
+         if (!modalIsOpen) return;
          modalIsOpen = false;
+
+         const bd = document.querySelector('.modal-backdrop.user-modal-backdrop');
+
+         // Quitar show primero para disparar el fade-out
+         modalEl.classList.remove('show');
+         if (bd) bd.classList.remove('show');
+         document.body.classList.remove('modal-open');
+
+         // Tras la duración de la transición, esconder y limpiar
+         setTimeout(() => {
+            modalEl.style.display = 'none';
+            modalEl.setAttribute('aria-hidden', 'true');
+            modalEl.removeAttribute('aria-modal');
+
+            if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+         }, MODAL_TRANSITION_MS);
       }
 
-      modalEl?.querySelector('[data-dismiss="modal"], .close')?.addEventListener('click', (e) => {
-         e.preventDefault();
-         closeModal();
+      // Cerrar con botones data-dismiss="modal" o .close
+      const closeBtns = modalEl.querySelectorAll('[data-dismiss="modal"], .close');
+      closeBtns.forEach(btn => {
+         btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeModal();
+         });
       });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalIsOpen) closeModal(); });
+
+      // Cerrar con ESC
+      document.addEventListener('keydown', (e) => {
+         if (e.key === 'Escape' && modalIsOpen) closeModal();
+      });
+
+      // Cerrar al hacer click en el área oscura del modal (fuera del dialog)
+      modalEl.addEventListener('mousedown', (e) => {
+         if (!modalIsOpen) return;
+         if (e.target === modalEl) {
+            e.preventDefault();
+            closeModal();
+         }
+      });
 
       // ---- Flujo centralizado: Nuevo/Editar segun selección + permisos ----
       async function openEdit(row) {
          if (!row) return;
          await openModal(false, row);
 
-         // fallback para roles si no llegaron en la fila
          if (USE_DETAIL_FALLBACK && (!Array.isArray(row.roles_ids) || row.roles_ids.length === 0)) {
             try {
                AppLoader?.show('Cargando detalle…');
@@ -323,11 +358,10 @@
             if (gridOptions.api) gridOptions.api.setRowData(rows);
             else if (gridApi?.setGridOption) gridApi.setGridOption('rowData', rows);
 
-            // limpiar selección tras recargar
             gridOptions.api?.deselectAll?.();
             gridApi?.deselectAll?.();
 
-            updateActionButtons(); // async (no esperamos)
+            updateActionButtons();
             toast('info', `Usuarios cargados: ${rows.length}`);
          } catch (err) {
             handleApiError(err, 'No se pudo cargar usuarios');
@@ -413,7 +447,7 @@
 
       btnNew?.addEventListener('click', async (e) => {
          e.preventDefault();
-         await openEditSelected(); // sin selección → nuevo; con selección → editar (con permisos)
+         await openEditSelected();
       });
 
       btnDelete?.addEventListener('click', async () => {
@@ -434,9 +468,7 @@
       // ---- Primera carga ----
       loadData();
 
-      // Aplica gating si usas el helper global (opcional; por si hay otros botones con data-perm)
       if (window.__applyGates) { window.__applyGates(document); }
-      // Inicializa estado del botón nuevo/editar segun permisos actuales
       updateActionButtons();
    }
 

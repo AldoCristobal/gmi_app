@@ -4,29 +4,62 @@
       <!-- Columna: Roles (Grid) -->
       <div class="col-lg-7">
          <div class="card shadow-sm">
-            <div class="card-header d-flex align-items-center gap-2">
+            <div class="card-header d-flex align-items-center">
                <i class="fas fa-user-shield mr-2"></i>
                <strong>Roles</strong>
-               <div class="ml-auto d-flex align-items-center gap-2">
-                  <input id="r-q" class="form-control form-control-sm" placeholder="Buscar (nombre o slug)" style="width: 240px;">
-                  <button id="r-btn-search" class="btn btn-sm btn-outline-secondary">
+
+               <div class="ml-auto d-flex align-items-center">
+                  <!-- Buscador -->
+                  <input id="r-q"
+                     class="form-control form-control-sm mr-2"
+                     placeholder="Buscar (nombre o slug)"
+                     style="width: 240px;">
+
+                  <!-- Buscar -->
+                  <button id="r-btn-search"
+                     class="btn btn-sm btn-outline-secondary mr-1"
+                     title="Buscar">
                      <i class="fas fa-search"></i>
                   </button>
-                  <button id="r-btn-refresh" class="btn btn-sm btn-outline-secondary" title="Refrescar">
+
+                  <!-- Refrescar -->
+                  <button id="r-btn-refresh"
+                     class="btn btn-sm btn-outline-secondary mr-3"
+                     title="Refrescar">
                      <i class="fas fa-sync"></i>
                   </button>
-                  <div class="vr mx-2"></div>
-                  <button id="r-btn-new" class="btn btn-sm btn-success" data-perm="admin.roles.crear" data-perm-mode="disable">
-                     <i class="fas fa-plus"></i> Nuevo
+
+                  <!-- Nuevo -->
+                  <button id="r-btn-new"
+                     class="btn btn-sm btn-outline-success mr-1"
+                     data-perm="admin.roles.crear"
+                     data-perm-mode="disable"
+                     title="Nuevo rol">
+                     <i class="fas fa-plus"></i>
                   </button>
-                  <button id="r-btn-edit" class="btn btn-sm btn-warning" data-perm="admin.roles.editar" data-perm-mode="disable" disabled>
-                     <i class="fas fa-pen"></i> Editar
+
+                  <!-- Editar -->
+                  <button id="r-btn-edit"
+                     class="btn btn-sm btn-outline-warning mr-1"
+                     data-perm="admin.roles.editar"
+                     data-perm-mode="disable"
+                     disabled
+                     title="Editar rol seleccionado">
+                     <i class="fas fa-pen"></i>
                   </button>
-                  <button id="r-btn-del" class="btn btn-sm btn-danger" data-perm="admin.roles.borrar" data-perm-mode="disable" disabled>
-                     <i class="fas fa-trash"></i> Eliminar
+
+                  <!-- Eliminar -->
+                  <button id="r-btn-del"
+                     class="btn btn-sm btn-outline-danger"
+                     data-perm="admin.roles.borrar"
+                     data-perm-mode="disable"
+                     disabled
+                     title="Eliminar rol seleccionado">
+                     <i class="fas fa-trash"></i>
                   </button>
                </div>
             </div>
+
             <div class="card-body p-0">
                <div id="gridRoles" style="height: 520px;" class="ag-theme-alpine-dark"></div>
             </div>
@@ -56,7 +89,12 @@
                   <button id="rp-unselect-all" class="btn btn-sm btn-outline-warning mr-1" title="Limpiar">
                      <i class="fas fa-square"></i>
                   </button>
-                  <button id="rp-save" class="btn btn-sm btn-primary" data-perm="admin.roles.permisos" data-perm-mode="disable" disabled title="Guardar">
+                  <button id="rp-save"
+                     class="btn btn-sm btn-primary"
+                     data-perm="admin.roles.permisos"
+                     data-perm-mode="disable"
+                     disabled
+                     title="Guardar">
                      <i class="fas fa-save"></i>
                   </button>
                </div>
@@ -78,7 +116,9 @@
       <div class="modal-content">
          <div class="modal-header">
             <h5 id="rol-modal-title" class="modal-title">Nuevo rol</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span>&times;</span></button>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+               <span>&times;</span>
+            </button>
          </div>
          <div class="modal-body">
             <input type="hidden" id="rol-id">
@@ -111,7 +151,9 @@
          </div>
          <div class="modal-footer">
             <button class="btn btn-light" data-dismiss="modal">Cancelar</button>
-            <button id="rol-save" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+            <button id="rol-save" class="btn btn-primary">
+               <i class="fas fa-save"></i> Guardar
+            </button>
          </div>
       </div>
    </div>
