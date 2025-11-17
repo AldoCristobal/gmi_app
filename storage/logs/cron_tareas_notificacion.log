@@ -1,0 +1,24 @@
+[2025-11-17 15-10] Iniciando job de cron_tareas_notificacion...
+=== CRON NOTIFICACIONES DE TAREAS ===
+Fecha: 2025-11-17 15:10:24
+Total pendientes: 2
+Enviadas: 2
+Omitidas: 0
+Fallidas: 0
+
+--- DETALLES ---
+{"notificacion_id":6,"status":"enviada","to":"crataldo@gmail.com"}
+{"notificacion_id":7,"status":"enviada","to":"gerencia@gmi.local"}
+[2025-11-17 15-10] Job cron_tareas_notificacion finalizado.
+[2025-11-17 15-12] Iniciando job de cron_tareas_notificacion...
+=== CRON NOTIFICACIONES DE TAREAS ===
+Fecha: 2025-11-17 15:12:37
+Total pendientes: 2
+Enviadas: 2
+Omitidas: 0
+Fallidas: 0
+
+--- DETALLES ---
+{"notificacion_id":8,"status":"enviada","to":"crataldo@gmail.com"}
+{"notificacion_id":9,"status":"enviada","to":"deathdrag26@gmail.com"}
+[2025-11-17 15-12] Job cron_tareas_notificacion finalizado.
