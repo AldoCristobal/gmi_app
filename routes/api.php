@@ -12,6 +12,7 @@ use App\Controllers\EmpresaObligacionController;
 use App\Controllers\RevisionController;
 use App\Controllers\RevisionDocumentoController;
 use App\Controllers\UploadTempController;
+use App\Controllers\EmpresaObligacionRutinaController;
 
 
 use App\Http\Middlewares\AuthMiddleware;
@@ -28,8 +29,9 @@ $men = new MenuController();
 $cat = new CatalogosController();
 $empObl = new EmpresaObligacionController();
 $rev   = new RevisionController();
-$revDoc= new RevisionDocumentoController();
-$uplTmp= new UploadTempController();
+$revDoc = new RevisionDocumentoController();
+$uplTmp = new UploadTempController();
+$empRut = new EmpresaObligacionRutinaController();
 
 
 // Login (NO Auth, NO CSRF)
@@ -367,6 +369,39 @@ $router->delete('/api/v1/empresas/obligaciones', [
    new ScopeMiddleware(),
    [$empObl, 'destroy']
 ]);
+
+
+/** ===================== RUTINAS / CONFIGURACIÓN OBLIGACIONES POR EMPRESA ===================== **/
+
+// Lista de obligaciones de una empresa + resumen de rutina
+// GET /api/v1/empresas/obligaciones/rutinas?empresa_id=123
+$router->get('/api/v1/empresas/obligaciones/rutinas', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['empresa.obligacion.ver']), // mismo permiso que el index de obligaciones
+   new ScopeMiddleware(),
+   [$empRut, 'index']
+]);
+
+// Detalle de la rutina de una obligación específica de la empresa
+// GET /api/v1/empresas/obligaciones/rutina?empresa_id=123&obligacion_id=45
+$router->get('/api/v1/empresas/obligaciones/rutina', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['empresa.obligacion.ver']),
+   new ScopeMiddleware(),
+   [$empRut, 'show']
+]);
+
+// Guardar rutina (crear/actualizar configuración)
+// PUT /api/v1/empresas/obligaciones/rutina
+// Body JSON: { empresa_id, obligacion_id, dia_vencimiento, dias_anticipacion, offset_dias, responsable_id, enviar_correo, ... }
+$router->put('/api/v1/empresas/obligaciones/rutina', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['empresa.obligacion.editar']), // reutilizamos el mismo permiso que ya usas para editar obligaciones por empresa
+   new ScopeMiddleware(),
+   [$empRut, 'update']
+]);
+
 
 /** ===================== REVISIÓNES ===================== **/
 

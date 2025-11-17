@@ -184,4 +184,164 @@ final class EmpresaObligacionRepository
       }
       return $this->getIdsAsignadas($empresaId);
    }
+
+
+   public function listarPorEmpresaConObligacion(int $empresaId): array
+   {
+      $sql = "
+         SELECT 
+            eo.id,
+            eo.empresa_id,
+            eo.obligacion_id,
+            eo.periodicidad,
+            eo.tipo_dias,
+            eo.dia_vencimiento,
+            eo.offset_dias,
+            eo.dias_anticipacion,
+            eo.fecha_inicio,
+            eo.fecha_fin,
+            eo.responsable_id,
+            eo.area_id,
+            eo.enviar_correo,
+            eo.notas,
+            eo.activo,
+            o.clave       AS obligacion_clave,
+            o.descripcion AS obligacion_desc,
+            o.organismo   AS obligacion_organismo
+         FROM empresa_obligacion eo
+         INNER JOIN obligacion o ON o.id = eo.obligacion_id
+         WHERE eo.empresa_id = :empresa_id
+         ORDER BY o.descripcion ASC
+      ";
+
+      $stmt = $this->db->prepare($sql);
+      $stmt->execute(['empresa_id' => $empresaId]);
+
+      return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+   }
+
+   /**
+    * Busca un registro empresa_obligacion por empresa + obligación.
+    */
+   public function buscarEmpresaObligacion(int $empresaId, int $obligacionId): ?array
+   {
+      $sql = "
+         SELECT *
+         FROM empresa_obligacion
+         WHERE empresa_id = :empresa_id
+           AND obligacion_id = :obligacion_id
+         LIMIT 1
+      ";
+
+      $stmt = $this->db->prepare($sql);
+      $stmt->execute([
+         'empresa_id'    => $empresaId,
+         'obligacion_id' => $obligacionId,
+      ]);
+
+      $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+      return $row ?: null;
+   }
+
+   /**
+    * Actualiza los campos de rutina en empresa_obligacion.
+    * $data debe traer: dia_vencimiento, dias_anticipacion, offset_dias, responsable_id, enviar_correo,
+    * fecha_inicio, fecha_fin, notas, periodicidad.
+    */
+   public function actualizarRutina(int $id, array $data): bool
+   {
+      $sql = "
+         UPDATE empresa_obligacion
+         SET 
+            dia_vencimiento   = :dia_vencimiento,
+            dias_anticipacion = :dias_anticipacion,
+            offset_dias       = :offset_dias,
+            responsable_id    = :responsable_id,
+            enviar_correo     = :enviar_correo,
+            fecha_inicio      = :fecha_inicio,
+            fecha_fin         = :fecha_fin,
+            notas             = :notas,
+            periodicidad      = :periodicidad
+         WHERE id = :id
+      ";
+
+      $stmt = $this->db->prepare($sql);
+      return $stmt->execute([
+         'dia_vencimiento'   => $data['dia_vencimiento'],
+         'dias_anticipacion' => $data['dias_anticipacion'],
+         'offset_dias'       => $data['offset_dias'],
+         'responsable_id'    => $data['responsable_id'],
+         'enviar_correo'     => $data['enviar_correo'],
+         'fecha_inicio'      => $data['fecha_inicio'],
+         'fecha_fin'         => $data['fecha_fin'],
+         'notas'             => $data['notas'],
+         'periodicidad'      => $data['periodicidad'],
+         'id'                => $id,
+      ]);
+   }
+
+   /**
+    * Crea un nuevo registro empresa_obligacion con la rutina/configuración.
+    * $data debe traer al menos:
+    *  empresa_id, obligacion_id, periodicidad, tipo_dias, dia_vencimiento,
+    *  offset_dias, dias_anticipacion, fecha_inicio, fecha_fin, responsable_id,
+    *  area_id, enviar_correo, notas, activo
+    */
+   public function crearRutina(array $data): int
+   {
+      $sql = "
+         INSERT INTO empresa_obligacion (
+            empresa_id,
+            obligacion_id,
+            periodicidad,
+            tipo_dias,
+            dia_vencimiento,
+            offset_dias,
+            dias_anticipacion,
+            fecha_inicio,
+            fecha_fin,
+            responsable_id,
+            area_id,
+            enviar_correo,
+            notas,
+            activo
+         ) VALUES (
+            :empresa_id,
+            :obligacion_id,
+            :periodicidad,
+            :tipo_dias,
+            :dia_vencimiento,
+            :offset_dias,
+            :dias_anticipacion,
+            :fecha_inicio,
+            :fecha_fin,
+            :responsable_id,
+            :area_id,
+            :enviar_correo,
+            :notas,
+            :activo
+         )
+      ";
+
+      $stmt = $this->db->prepare($sql);
+      $stmt->execute([
+         'empresa_id'        => $data['empresa_id'],
+         'obligacion_id'     => $data['obligacion_id'],
+         'periodicidad'      => $data['periodicidad'],
+         'tipo_dias'         => $data['tipo_dias'],
+         'dia_vencimiento'   => $data['dia_vencimiento'],
+         'offset_dias'       => $data['offset_dias'],
+         'dias_anticipacion' => $data['dias_anticipacion'],
+         'fecha_inicio'      => $data['fecha_inicio'],
+         'fecha_fin'         => $data['fecha_fin'],
+         'responsable_id'    => $data['responsable_id'],
+         'area_id'           => $data['area_id'],
+         'enviar_correo'     => $data['enviar_correo'],
+         'notas'             => $data['notas'],
+         'activo'            => $data['activo'],
+      ]);
+
+      return (int)$this->db->lastInsertId();
+   }
 }

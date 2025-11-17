@@ -145,3 +145,25 @@ $router->get('/revisiones/historial', [
       \App\Http\Response::html($html);
    }
 ]);
+
+
+// Creacion de rutinas (solo lectura)
+$router->get('/empresas/rutinas', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   new \App\Http\Middlewares\RbacMiddleware(['empresa.rutinas.ver']),
+   function ($req) {
+      // Asegura CSRF en la vista
+      if (session_status() !== PHP_SESSION_ACTIVE) {
+         App\Security\Session::start();
+      }
+      if (empty($_SESSION['csrf_token'])) {
+         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      }
+      $html = \App\Support\View::render('empresas/rutinas', [
+         'title'     => 'Rutinas',
+         'script'    => 'empresas.rutinas.js',
+         'csrfToken' => $_SESSION['csrf_token'],
+      ]);
+      \App\Http\Response::html($html);
+   }
+]);

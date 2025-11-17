@@ -289,4 +289,15 @@ final class EmpresaRepository
       $r = $st->fetch(PDO::FETCH_ASSOC);
       return $r ?: null;
    }
+
+   public function findById(int $id): ?array
+   {
+      $sql = "SELECT * FROM empresa WHERE id = :id LIMIT 1";
+      $stmt = $this->db->prepare($sql);
+      $stmt->execute(['id' => $id]);
+      $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+      return $row ?: null;
+   }
+
 }

@@ -139,48 +139,48 @@ final class RevisionRepository
 
       // data con JOINs y semáforo (solo en_proceso)
       $sql = "
-        SELECT 
-          r.*,
-          rt.nombre AS tipo_revision,
-          u.nombre  AS responsable_nombre,
-          u.email   AS responsable_email,
-          a.nombre  AS area_nombre,
+         SELECT 
+            r.*,
+            rt.nombre AS tipo_revision,
+            u.nombre  AS responsable_nombre,
+            u.email   AS responsable_email,
+            a.nombre  AS area_nombre,
 
-          CASE 
-            WHEN r.fecha_vencimiento IS NULL THEN NULL
-            ELSE DATEDIFF(r.fecha_vencimiento, CURRENT_DATE())
-          END AS dias_restantes,
+            CASE 
+               WHEN r.fecha_vencimiento IS NULL THEN NULL
+               ELSE DATEDIFF(r.fecha_vencimiento, CURRENT_DATE())
+            END AS dias_restantes,
 
-          (r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0) AS is_vencida_proceso,
-          (r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5) AS is_proxima_proceso,
+            (r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0) AS is_vencida_proceso,
+            (r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5) AS is_proxima_proceso,
 
-          CASE
-            WHEN r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0 
-              THEN 'red'
-            WHEN r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5 
-              THEN 'yellow'
-            ELSE 'none'
-          END AS semaforo_color,
+            CASE
+               WHEN r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0 
+               THEN 'red'
+               WHEN r.estatus = 'en_proceso' AND r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5 
+               THEN 'yellow'
+               ELSE 'none'
+            END AS semaforo_color,
 
-          CASE
-            WHEN r.estatus <> 'en_proceso' THEN 'sin_alerta'
-            WHEN r.fecha_vencimiento IS NULL THEN 'ok'
-            WHEN DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0 THEN 'vencida'
-            WHEN DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5 THEN 'proxima'
-            ELSE 'ok'
-          END AS semaforo_tag
+            CASE
+               WHEN r.estatus <> 'en_proceso' THEN 'sin_alerta'
+               WHEN r.fecha_vencimiento IS NULL THEN 'ok'
+               WHEN DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) < 0 THEN 'vencida'
+               WHEN DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) BETWEEN 0 AND 5 THEN 'proxima'
+               ELSE 'ok'
+            END AS semaforo_tag
 
-        FROM revision r
-        JOIN revision_tipo rt ON rt.id = r.tipo_revision_id
-        LEFT JOIN usuario u   ON u.id  = r.responsable_id
-        LEFT JOIN area a      ON a.id  = r.area_id
-        WHERE {$where}
-        ORDER BY
-          (r.estatus = 'en_proceso') DESC,
-          (r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) <= 5) DESC,
-          r.fecha_vencimiento ASC,
-          r.id DESC
-        LIMIT :lim OFFSET :off
+         FROM revision r
+         JOIN revision_tipo rt ON rt.id = r.tipo_revision_id
+         LEFT JOIN usuario u   ON u.id  = r.responsable_id
+         LEFT JOIN area a      ON a.id  = r.area_id
+         WHERE {$where}
+         ORDER BY
+            (r.estatus = 'en_proceso') DESC,
+            (r.fecha_vencimiento IS NOT NULL AND DATEDIFF(r.fecha_vencimiento, CURRENT_DATE()) <= 5) DESC,
+            r.fecha_vencimiento ASC,
+            r.id DESC
+         LIMIT :lim OFFSET :off
       ";
       $std = $this->db->prepare($sql);
       foreach ($params as $k => $v) $std->bindValue($k, $v);
@@ -242,19 +242,19 @@ final class RevisionRepository
    public function create(array $d): int
    {
       $st = $this->db->prepare("
-        INSERT INTO revision(
-          nombre,numero_orden,numero_oficio,ejercicio,
-          fecha_notificacion,fecha_vencimiento,
-          tipo_revision_id,tipo_impuesto,dependencia,antecedente,
-          estatus,riesgo,observaciones,
-          area_id,responsable_id,created_by
-        ) VALUES (
-          :nombre,:numero_orden,:numero_oficio,:ejercicio,
-          :fecha_notificacion,:fecha_vencimiento,
-          :tipo_revision_id,:tipo_impuesto,:dependencia,:antecedente,
-          :estatus,:riesgo,:observaciones,
-          :area_id,:responsable_id,:created_by
-        )
+         INSERT INTO revision(
+            nombre,numero_orden,numero_oficio,ejercicio,
+            fecha_notificacion,fecha_vencimiento,
+            tipo_revision_id,tipo_impuesto,dependencia,antecedente,
+            estatus,riesgo,observaciones,
+            area_id,responsable_id,created_by
+         ) VALUES (
+            :nombre,:numero_orden,:numero_oficio,:ejercicio,
+            :fecha_notificacion,:fecha_vencimiento,
+            :tipo_revision_id,:tipo_impuesto,:dependencia,:antecedente,
+            :estatus,:riesgo,:observaciones,
+            :area_id,:responsable_id,:created_by
+         )
       ");
       $st->execute($d);
       return (int)$this->db->lastInsertId();
@@ -291,10 +291,10 @@ final class RevisionRepository
    public function insertDoc(array $d): int
    {
       $st = $this->db->prepare("
-        INSERT INTO revision_documento
-          (revision_id,version,is_inicial,nombre_original,archivo_path,mime,size_bytes,uploaded_by)
-        VALUES
-          (:revision_id,:version,:is_inicial,:nombre_original,:archivo_path,:mime,:size_bytes,:uploaded_by)
+         INSERT INTO revision_documento
+            (revision_id,version,is_inicial,nombre_original,archivo_path,mime,size_bytes,uploaded_by)
+         VALUES
+            (:revision_id,:version,:is_inicial,:nombre_original,:archivo_path,:mime,:size_bytes,:uploaded_by)
       ");
       $st->execute($d);
       return (int)$this->db->lastInsertId();
