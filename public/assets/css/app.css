@@ -904,3 +904,131 @@
    background-color: #374151 !important;
    color: #f9fafb !important;
 }
+
+#mis-tareas-page .card {
+   background-color: #1f2933;
+   border-color: #111827;
+}
+
+#mis-tareas-page .card-header {
+   border-bottom: 1px solid #111827;
+}
+
+#mis-tareas-grid {
+   height: calc(100vh - 260px);
+   min-height: 300px;
+   width: 100%;
+}
+
+#mis-tareas-page .toolbar-filtros .form-control,
+#mis-tareas-page .toolbar-filtros .custom-select {
+   background-color: #111827;
+   border-color: #374151;
+   color: #e5e7eb;
+}
+
+#mis-tareas-page .toolbar-filtros .form-control::placeholder {
+   color: #6b7280;
+}
+
+#mis-tareas-page .toolbar-filtros label {
+   font-size: 0.78rem;
+   color: #9ca3af;
+   margin-bottom: 2px;
+}
+
+#mis-tareas-page .toolbar-filtros .form-group {
+   margin-right: 10px;
+   margin-bottom: 0;
+}
+
+#mis-tareas-page .btn-icon {
+   padding: 0.35rem 0.55rem;
+   font-size: 0.72rem;
+}
+
+#mis-tareas-page .btn-icon i {
+   margin: 0;
+}
+
+/* Badges de estado dentro del grid */
+.badge-estado {
+   display: inline-flex;
+   align-items: center;
+   border-radius: 999px;
+   padding: 0.15rem 0.5rem;
+   font-size: 0.7rem;
+   font-weight: 600;
+}
+
+.badge-estado .dot {
+   width: 8px;
+   height: 8px;
+   border-radius: 999px;
+   margin-right: 4px;
+}
+
+.badge-estado-pendiente {
+   background-color: rgba(239, 68, 68, 0.12);
+   color: #fecaca;
+}
+
+.badge-estado-pendiente .dot {
+   background-color: #ef4444;
+}
+
+.badge-estado-en_revision {
+   background-color: rgba(245, 158, 11, 0.16);
+   color: #fbbf24;
+}
+
+.badge-estado-en_revision .dot {
+   background-color: #f59e0b;
+}
+
+.badge-estado-completa {
+   background-color: rgba(16, 185, 129, 0.16);
+   color: #6ee7b7;
+}
+
+.badge-estado-completa .dot {
+   background-color: #10b981;
+}
+
+.badge-estado-cancelada,
+.badge-estado-bloqueada {
+   background-color: rgba(55, 65, 81, 0.6);
+   color: #e5e7eb;
+}
+
+.badge-estado-cancelada .dot,
+.badge-estado-bloqueada .dot {
+   background-color: #6b7280;
+}
+
+.legend-item {
+   display: inline-flex;
+   align-items: center;
+   margin-right: 12px;
+   font-size: 0.72rem;
+   color: #9ca3af;
+}
+
+.legend-item .legend-dot {
+   width: 8px;
+   height: 8px;
+   border-radius: 999px;
+   margin-right: 4px;
+}
+
+.legend-dot-pendiente {
+   background-color: #ef4444;
+}
+
+.legend-dot-en_revision {
+   background-color: #f59e0b;
+}
+
+.legend-dot-completa {
+   background-color: #10b981;
+}

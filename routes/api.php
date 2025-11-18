@@ -6,19 +6,20 @@ use App\Controllers\MenuController;
 use App\Controllers\RoleController;
 use App\Controllers\UserController;
 use App\Controllers\EmpresaController;
-use App\Controllers\CatalogosController;
 use App\Controllers\PermisoController;
-use App\Controllers\EmpresaObligacionController;
 use App\Controllers\RevisionController;
-use App\Controllers\RevisionDocumentoController;
-use App\Controllers\UploadTempController;
-use App\Controllers\EmpresaObligacionRutinaController;
-
-
+use App\Controllers\CatalogosController;
 use App\Http\Middlewares\AuthMiddleware;
 use App\Http\Middlewares\CsrfMiddleware;
 use App\Http\Middlewares\RbacMiddleware;
+use App\Controllers\UploadTempController;
 use App\Http\Middlewares\ScopeMiddleware;
+
+use App\Controllers\TareaTrabajoController;
+use App\Controllers\TareaDocumentoController;
+use App\Controllers\EmpresaObligacionController;
+use App\Controllers\RevisionDocumentoController;
+use App\Controllers\EmpresaObligacionRutinaController;
 
 $auth = new AuthController();
 $emp = new EmpresaController();
@@ -32,7 +33,8 @@ $rev   = new RevisionController();
 $revDoc = new RevisionDocumentoController();
 $uplTmp = new UploadTempController();
 $empRut = new EmpresaObligacionRutinaController();
-
+$tareaTrab = new TareaTrabajoController();
+$tDoc = new TareaDocumentoController();
 
 // Login (NO Auth, NO CSRF)
 $router->post('/api/login', [$auth, 'login']);
@@ -504,4 +506,60 @@ $router->post('/api/v1/uploads/temp', [
 $router->get('/api/v1/catalogos/revision_tipos', [
    new \App\Http\Middlewares\AuthMiddleware(),
    [new \App\Controllers\CatalogosController(), 'revisionTipos']
+]);
+
+/** ===================== TAREAS (MIS TAREAS) ===================== **/
+
+$router->get('/api/v1/tareas', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['tareas.ver']),
+   new ScopeMiddleware(),
+   [$tareaTrab, 'index']
+]);
+
+$router->get('/api/v1/tareas/show', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['tareas.ver']),
+   new ScopeMiddleware(),
+   [$tareaTrab, 'show']
+]);
+
+$router->patch('/api/v1/tareas/estado', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['tareas.cambiar_estado']),
+   new ScopeMiddleware(),
+   [$tareaTrab, 'estado']
+]);
+
+/** =============== EVIDENCIAS DE TAREAS =============== **/
+
+$router->get('/api/v1/tareas/documentos', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['tareas.evidencias.ver']),
+   new ScopeMiddleware(),
+   [$tDoc, 'list']
+]);
+
+$router->post('/api/v1/tareas/documentos', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['tareas.evidencias.subir']),
+   new ScopeMiddleware(),
+   [$tDoc, 'upload']
+]);
+
+$router->get('/api/v1/tareas/documentos/download', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['tareas.evidencias.descargar']),
+   new ScopeMiddleware(),
+   [$tDoc, 'download']
+]);
+
+$router->delete('/api/v1/tareas/documentos', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['tareas.evidencias.borrar']),
+   new ScopeMiddleware(),
+   [$tDoc, 'delete']
 ]);
