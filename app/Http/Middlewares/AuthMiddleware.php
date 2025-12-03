@@ -10,14 +10,29 @@ use App\Security\Session;
 
 final class AuthMiddleware
 {
-   public function handle(Request $req, callable $next)
+   public function __invoke(Request $req, callable $next): void
    {
       Session::start();
-      if (!isset($_SESSION['user'])) {
-         return Response::json(['ok' => false, 'error' => ['code' => 'UNAUTH', 'message' => 'No autenticado']], 401);
+
+      $user = $_SESSION['user'] ?? null;
+
+      if (!$user) {
+         Response::json(
+            [
+               'ok'    => false,
+               'error' => [
+                  'code'    => 'UNAUTH',
+                  'message' => 'No autenticado',
+               ],
+            ],
+            401
+         );
+         return;
       }
-      // inyecta user en el Request
-      $req = $req->withAttr('user', $_SESSION['user']);
-      return $next($req);
+
+      // Inyecta user en el Request
+      $req = $req->withAttr('user', $user);
+
+      $next($req);
    }
 }

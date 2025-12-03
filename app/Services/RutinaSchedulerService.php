@@ -143,7 +143,7 @@ final class RutinaSchedulerService
       }
 
       // 4) Evitar duplicado por periodo
-      if ($this->tareaRepo->existsForPeriodo((int) $r['eo_id'], $piStr, $pfStr)) {
+      if ($this->tareaRepo->existsForPeriod((int) $r['eo_id'], $piStr, $pfStr)) {
          return ['creada' => false, 'motivo' => 'ya_existe'];
       }
 
@@ -170,7 +170,7 @@ final class RutinaSchedulerService
       $responsableId = $r['responsable_id'] ?: $r['empresa_responsable_id'];
 
       // 8) Crear tarea
-      $tareaId = $this->tareaRepo->crear([
+      $tareaId = $this->tareaRepo->create([
          'empresa_obligacion_id' => (int) $r['eo_id'],
          'tipo_tarea'            => 'OBLIGACION',
          'origen'                => 'AUTOMATICO',

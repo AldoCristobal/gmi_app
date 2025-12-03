@@ -18,11 +18,21 @@ final class MenuRepository
    }
 
    /**
+    * NUEVO ESTÁNDAR FLEXIBLE:
     * Lista plana por namespace (para el editor).
-    * El front arma el árbol (o el backend si lo prefieres).
+    *
+    * Soporta dos formas:
+    *  - list('sidebar')
+    *  - list(['namespace' => 'sidebar'])
     */
-   public function list(string $namespace = 'sidebar'): array
+   public function list(string|array $arg = 'sidebar'): array
    {
+      if (is_array($arg)) {
+         $namespace = $arg['namespace'] ?? 'sidebar';
+      } else {
+         $namespace = $arg;
+      }
+
       $st = $this->db->prepare("
             SELECT id,parent_id,etiqueta,icono,vista,url_externa,target,tipo,slug,
                    orden,visible,requiere_permiso,badge_text,badge_variant,namespace
@@ -96,7 +106,8 @@ final class MenuRepository
       return (int)$this->db->lastInsertId();
    }
 
-   public function getById(int $id): ?array
+   /** NUEVO ESTÁNDAR: findById(). */
+   public function findById(int $id): ?array
    {
       $st = $this->db->prepare("SELECT * FROM menu WHERE id=:id LIMIT 1");
       $st->execute([':id' => $id]);
@@ -104,18 +115,22 @@ final class MenuRepository
       return $row ?: null;
    }
 
+   /** LEGACY: alias a findById() para compatibilidad. */
+   public function getById(int $id): ?array
+   {
+      return $this->findById($id);
+   }
+
    public function getRolesForMenu(int $menuId): array
    {
       $st = $this->db->prepare("SELECT rol_id FROM menu_rol WHERE menu_id = :m");
       $st->execute([':m' => $menuId]);
-      // Devuelve solo los IDs de rol como enteros, p.ej. [1, 3, 5]
       return array_map('intval', array_column($st->fetchAll(), 'rol_id'));
    }
 
    /** Update parcial solo con campos permitidos (sin parent_id/orden aquí) */
    public function update(int $id, array $d): bool
    {
-      // Campos permitidos en update “detalle”
       $allowed = [
          'etiqueta',
          'icono',
@@ -153,7 +168,6 @@ final class MenuRepository
 
    /**
     * Borra en cascada (subárbol) sin depender de FK CASCADE.
-    * Seguro para producción.
     */
    public function deleteCascade(int $id): bool
    {
@@ -179,20 +193,14 @@ final class MenuRepository
       $this->delete($id);
    }
 
-   /**
-    * Reparent: mover todos los hijos de $fromId al padre $toParentId
-    * y reasignar orden consecutivo al final del grupo destino.
-    */
    public function reparentChildrenToParent(int $fromId, ?int $toParentId): bool
    {
       $this->db->beginTransaction();
       try {
-         // Trae hijos actuales (ordenados)
          $st = $this->db->prepare("SELECT id FROM menu WHERE parent_id=:p ORDER BY orden, id");
          $st->execute([':p' => $fromId]);
          $children = $st->fetchAll();
 
-         // Máximo orden en el nuevo padre
          if ($toParentId === null) {
             $stMax = $this->db->prepare("SELECT COALESCE(MAX(orden), -1) AS m FROM menu WHERE parent_id IS NULL");
             $stMax->execute();
@@ -200,10 +208,9 @@ final class MenuRepository
             $stMax = $this->db->prepare("SELECT COALESCE(MAX(orden), -1) AS m FROM menu WHERE parent_id=:p");
             $stMax->execute([':p' => $toParentId]);
          }
-         $max = (int)($stMax->fetch()['m'] ?? -1);
+         $max  = (int)($stMax->fetch()['m'] ?? -1);
          $next = $max + 1;
 
-         // Mueve hijo por hijo
          $up = $this->db->prepare("UPDATE menu SET parent_id=:newp, orden=:o WHERE id=:id");
          foreach ($children as $i => $row) {
             $cid = (int)$row['id'];
@@ -225,11 +232,6 @@ final class MenuRepository
       }
    }
 
-   /**
-    * Reorder batch desde el front (DnD).
-    * Cambia parent_id y orden para cada registro.
-    * Evita HY093: SQL con named params, siempre liga todos los placeholders.
-    */
    public function reorderBatch(array $changes): int
    {
       if (!$changes) return 0;
@@ -250,8 +252,11 @@ final class MenuRepository
 
             $st->bindValue(':id', $id, PDO::PARAM_INT);
             $st->bindValue(':o', $o, PDO::PARAM_INT);
-            if ($p === null) $st->bindValue(':p', null, PDO::PARAM_NULL);
-            else $st->bindValue(':p', $p, PDO::PARAM_INT);
+            if ($p === null) {
+               $st->bindValue(':p', null, PDO::PARAM_NULL);
+            } else {
+               $st->bindValue(':p', $p, PDO::PARAM_INT);
+            }
 
             $st->execute();
             $saved += $st->rowCount();
@@ -265,7 +270,6 @@ final class MenuRepository
       }
    }
 
-   /** Asigna un nodo de menú a un conjunto de roles (sobreescribe) */
    public function assignToRoles(int $menuId, array $roleIds): void
    {
       $this->db->beginTransaction();
@@ -287,19 +291,12 @@ final class MenuRepository
       }
    }
 
-   /**
-    * Árbol para el usuario autenticado (sidebar):
-    * - Filtra por roles del usuario (tabla menu_rol)
-    * - Filtra por visible=1
-    * - Si requiere_permiso no es null, valida que esté en $user['permisos']
-    */
    public function treeForUser(array $user): array
    {
       $roles = $user['roles'] ?? [];
       if (!$roles) return [];
 
-      // Construye placeholders dinámicos
-      $in = implode(',', array_fill(0, count($roles), '?'));
+      $in  = implode(',', array_fill(0, count($roles), '?'));
       $sql = "
             SELECT DISTINCT m.*
             FROM menu m
@@ -315,13 +312,11 @@ final class MenuRepository
       $st->execute();
       $items = $st->fetchAll();
 
-      // Filtra por permisos si requiere_permiso está definido
       $perms = $user['permisos'] ?? [];
       $items = array_values(array_filter($items, function ($it) use ($perms) {
          return empty($it['requiere_permiso']) || in_array($it['requiere_permiso'], $perms, true);
       }));
 
-      // Indexa y arma árbol
       $byId = [];
       foreach ($items as $it) {
          $it['children'] = [];

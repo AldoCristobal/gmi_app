@@ -1032,3 +1032,66 @@
 .legend-dot-completa {
    background-color: #10b981;
 }
+
+#nav-user-dropdown .dropdown-menu {
+   min-width: 300px !important;
+   padding: 1.2rem 1.4rem !important;
+   background: #1f1f1f;
+   /* igual al navbar */
+   border-radius: 8px;
+   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#nav-user-dropdown .dropdown-item {
+   color: #fff !important;
+   padding: .6rem .5rem !important;
+}
+
+#nav-user-dropdown .dropdown-header {
+   font-size: 1.15rem;
+   font-weight: 600;
+   color: #fff;
+}
+
+/* Separadores suaves */
+#nav-user-dropdown .dropdown-divider {
+   border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Quitar el sprite/imagen por defecto de FancyTree */
+#mr-tree .fancytree-icon {
+   background-image: none !important;
+   width: auto;
+   min-width: 18px;
+   margin-right: .35rem;
+}
+
+/* Que el expand/caret e icono no se encimen */
+#mr-tree .fancytree-expander {
+   width: 16px;
+   min-width: 16px;
+}
+
+/* Un poquito más compacto visualmente */
+#mr-tree .fancytree-title {
+   font-size: .94rem;
+}
+
+/* Resaltar rol seleccionado en la tabla de la izquierda */
+#mr-roles-table tbody tr.mr-role-selected {
+   background-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+#mr-roles-table tbody tr.mr-role-selected td {
+   border-top: 1px solid rgba(255, 255, 255, 0.20);
+   border-bottom: 1px solid rgba(255, 255, 255, 0.20);
+}
+
+#mr-roles-table tbody tr.mr-role-selected td:first-child {
+   border-left: 3px solid #17a2b8;
+   /* turquesa tipo AdminLTE */
+}
+
+#mr-roles-table tbody tr {
+   cursor: pointer;
+}

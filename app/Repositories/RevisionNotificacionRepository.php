@@ -63,19 +63,4 @@ final class RevisionNotificacionRepository
         $st = $this->db->prepare($sql);
         $st->execute([':rid' => $revisionId, ':tipo' => $tipo, ':to' => $destinatario, ':dias' => $diasAntes]);
     }
-
-    /* ——— Variante si agregas columnas estatus/error_msg ———
-    public function insertEnviada(int $rid, string $tipo, string $to, int $dias): void {
-        $this->db->prepare("INSERT INTO revision_notificacion (revision_id,tipo,enviado_a,dias_antes,estatus) VALUES (?,?,?,?, 'enviada')")
-                 ->execute([$rid,$tipo,$to,$dias]);
-    }
-    public function insertOmitida(int $rid, string $tipo, string $to, int $dias, ?string $err=null): void {
-        $this->db->prepare("INSERT INTO revision_notificacion (revision_id,tipo,enviado_a,dias_antes,estatus,error_msg) VALUES (?,?,?,?, 'omitida', ?)")
-                 ->execute([$rid,$tipo,$to,$dias,$err]);
-    }
-    public function insertFallida(int $rid, string $tipo, string $to, int $dias, string $err): void {
-        $this->db->prepare("INSERT INTO revision_notificacion (revision_id,tipo,enviado_a,dias_antes,estatus,error_msg) VALUES (?,?,?,?, 'fallida', ?)")
-                 ->execute([$rid,$tipo,$to,$dias,$err]);
-    }
-    */
 }

@@ -1,10 +1,8 @@
 // public/assets/js/users.js
 (function () {
-   // ===== Config =====
-   const USE_DETAIL_FALLBACK = true; // si no viene roles_ids en la fila, hace GET /api/v1/admin/usuarios/{id}
-   const MODAL_TRANSITION_MS = 150;  // tiempo aprox. de transición de Bootstrap
+   const USE_DETAIL_FALLBACK = false;
+   const MODAL_TRANSITION_MS = 150;
 
-   // ===== Notificaciones (Notyf) =====
    let _notyf = null;
    try {
       _notyf = new Notyf({
@@ -20,55 +18,50 @@
          ],
       });
    } catch (e) {
-      console.warn('Notyf no encontrado; se usarán logs de consola.');
+      console.warn('Notyf not found; console fallback');
    }
    const toast = (type, message) => {
       if (_notyf) _notyf.open({ type, message });
       else console[type === 'error' ? 'error' : 'log'](message);
    };
 
-   // Manejo central de errores de tu capa Api (que lanza err con .status/.code)
    function handleApiError(err, fallbackMsg = 'Error al procesar la solicitud') {
       console.error(err);
       const status = err?.status ?? err?.code;
       if (status === 401) toast('warning', 'Sesión expirada o no autenticado (401).');
       else if (status === 403 || status === 'FORBIDDEN') {
-         const missing = err?.payload?.error?.message || '';
-         toast('error', `No cuentas con permisos para realizar esta acción (403). ${missing}`);
+         const msg = err?.payload?.error?.message || '';
+         toast('error', `No cuentas con permisos para realizar esta acción (403). ${msg}`);
       } else if (status === 404) toast('warning', 'Recurso no encontrado (404).');
       else if (status === 409) toast('warning', 'Conflicto de datos (409).');
       else if (status === 422) toast('warning', 'Datos inválidos o incompletos (422).');
       else toast('error', `${fallbackMsg}${err?.message ? `: ${err.message}` : ''}`);
    }
 
-   // ===== Init =====
    function init() {
       if (typeof Api === 'undefined') { console.error('Api.js no cargado'); return; }
       if (typeof agGrid === 'undefined') { console.error('AG Grid no cargado'); return; }
 
-      // ---- Helpers DOM ----
       const $ = (sel, ctx = document) => ctx.querySelector(sel);
 
       function setEnabled(el, enabled) {
          if (!el) return;
          el.disabled = !enabled;
-         el.classList.toggle('disabled', !enabled);          // por si el gating dejó la clase
+         el.classList.toggle('disabled', !enabled);
          if (enabled) el.removeAttribute('aria-disabled');
          else el.setAttribute('aria-disabled', 'true');
       }
 
-      // ---- Contenedores / Controles ----
       const gridEl = $('#gridUsuarios');
-      if (!gridEl) { console.error('Falta el contenedor del grid: #gridUsuarios'); return; }
+      if (!gridEl) { console.error('Missing #gridUsuarios'); return; }
 
       const fQ = $('#f-q');
       const fActivo = $('#f-activo');
       const btnSearch = $('#btn-search');
-      const btnNew = $('#btn-new');       // Nuevo / Editar (dinámico)
-      const btnDelete = $('#btn-delete'); // Eliminar
-      const btnClear = $('#btn-clear');   // Limpiar selección (opcional si existe)
+      const btnNew = $('#btn-new');
+      const btnDelete = $('#btn-delete');
+      const btnClear = $('#btn-clear'); // opcional
 
-      // ---- Modal refs ----
       const modalEl = $('#user-modal');
       const modalTitle = $('#user-modal-title');
       const btnSave = $('#user-save');
@@ -83,9 +76,8 @@
       const fRoles = $('#u-roles');
       const pwdGroup = $('#pwd-group');
 
-      if (!modalEl || !modalTitle) { console.error('Falta el modal o su título'); return; }
+      if (!modalEl || !modalTitle) { console.error('Modal missing'); return; }
 
-      // ---- Catálogos ----
       let _areas = [], _jefes = [], _roles = [];
       let _catalogsLoaded = false;
 
@@ -93,6 +85,7 @@
          const res = await Api.get(url);
          return res.data || [];
       }
+
       function fillSelect(selectEl, items, valueField, labelField, { includeEmpty, emptyText } = {}) {
          if (!selectEl) return;
          selectEl.innerHTML = '';
@@ -109,6 +102,7 @@
             selectEl.appendChild(opt);
          }
       }
+
       async function loadCatalogs() {
          [_areas, _jefes, _roles] = await Promise.all([
             fetchCatalog('/api/v1/catalogos/areas'),
@@ -119,25 +113,31 @@
          fillSelect(fJefe, _jefes, 'id', 'nombre', { includeEmpty: true, emptyText: '(sin jefe)' });
          fillSelect(fRoles, _roles, 'id', 'nombre', { includeEmpty: false });
       }
+
       function setRolesSelected(selectEl, selectedIds = []) {
          if (!selectEl) return;
          const set = new Set((selectedIds || []).map(x => String(x)));
          for (const opt of selectEl.options) opt.selected = set.has(opt.value);
       }
+
       function getSelectedValues(selectEl) {
          return Array.from(selectEl?.selectedOptions || [])
             .map(o => parseInt(o.value, 10))
             .filter(Number.isInteger);
       }
 
-      // ---- AG Grid ----
       const columnDefs = [
          { headerName: '#', valueGetter: 'node.rowIndex + 1', width: 70 },
          { headerName: 'Nombre', field: 'nombre', flex: 1 },
          { headerName: 'Email', field: 'email', flex: 1 },
-         { headerName: 'Área', field: 'area_id', width: 100 },
-         { headerName: 'Jefe', field: 'jefe_id', width: 100 },
-         { headerName: 'Activo', field: 'activo', width: 100, valueFormatter: p => p.value ? 'Sí' : 'No' },
+         { headerName: 'Área', field: 'area_name', flex: 0.8, minWidth: 120 },
+         { headerName: 'Jefe', field: 'jefe_name', flex: 0.8, minWidth: 120 },
+         {
+            headerName: 'Activo',
+            field: 'activo',
+            width: 100,
+            valueFormatter: p => (String(p.value) === '1' || p.value === 1 ? 'Sí' : 'No'),
+         },
       ];
 
       const gridOptions = {
@@ -147,36 +147,31 @@
          rowHeight: 42,
          rowSelection: { mode: 'singleRow', enableClickSelection: false },
          onRowClicked: (e) => {
-            e.node.setSelected(!e.node.isSelected(), true); // toggle; true = limpia otras filas
-            updateActionButtons(); // async (no esperamos)
+            e.node.setSelected(!e.node.isSelected(), true);
+            updateActionButtons();
          },
-         onSelectionChanged: () => updateActionButtons(), // async
-         onRowDoubleClicked: () => { /* intencionalmente vacío */ },
+         onSelectionChanged: () => updateActionButtons(),
       };
 
-      const gridApi = (typeof agGrid.createGrid === 'function')
-         ? agGrid.createGrid(gridEl, gridOptions)
-         : new agGrid.Grid(gridEl, gridOptions);
-
-      function getSelectedRow() {
-         if (gridOptions.api?.getSelectedRows) {
-            const sel = gridOptions.api.getSelectedRows();
-            return (sel && sel[0]) ? sel[0] : null;
-         }
-         if (gridApi?.getSelectedRows) {
-            const sel = gridApi.getSelectedRows?.();
-            return (sel && sel[0]) ? sel[0] : null;
-         }
-         return null;
+      let gridApi;
+      if (typeof agGrid.createGrid === 'function') {
+         gridApi = agGrid.createGrid(gridEl, gridOptions);
+      } else {
+         new agGrid.Grid(gridEl, gridOptions);
+         gridApi = gridOptions.api;
       }
 
-      // ===== Permisos (helper) =====
+      function getSelectedRow() {
+         if (!gridApi || !gridApi.getSelectedRows) return null;
+         const sel = gridApi.getSelectedRows();
+         return (sel && sel[0]) ? sel[0] : null;
+      }
+
       const canPerm = (p) => {
          if (window.__canPerm) return window.__canPerm(p);
-         return Promise.resolve(false); // ⬅️ estricto
+         return Promise.resolve(false);
       };
 
-      // ---- Botones estado según selección + permisos ----
       async function updateActionButtons() {
          const selected = getSelectedRow();
          const canPermLocal = (p) => window.__canPerm ? window.__canPerm(p) : Promise.resolve(false);
@@ -186,7 +181,6 @@
          const canDelete = await canPermLocal('admin.users.borrar');
 
          if (selected) {
-            // Modo EDITAR
             btnNew?.classList.remove('btn-success');
             btnNew?.classList.add('btn-warning');
             if (btnNew) btnNew.innerHTML = '<i class="fas fa-pen"></i> Editar';
@@ -196,7 +190,6 @@
             setEnabled(btnDelete, !!canDelete);
             if (btnDelete) btnDelete.title = canDelete ? 'Eliminar usuario seleccionado' : 'No autorizado para eliminar';
          } else {
-            // Modo NUEVO
             btnNew?.classList.remove('btn-warning');
             btnNew?.classList.add('btn-success');
             if (btnNew) btnNew.innerHTML = '<i class="fas fa-plus"></i> Nuevo';
@@ -210,7 +203,6 @@
          }
       }
 
-      // ---- Modal robusto (con animación fade correcta) ----
       let modalIsOpen = false;
 
       function createBackdrop() {
@@ -222,7 +214,6 @@
                if (modalIsOpen) closeModal();
             });
             document.body.appendChild(bd);
-            // Forzar reflow y luego agregar show para animación fade
             void bd.offsetWidth;
             bd.classList.add('show');
          }
@@ -238,9 +229,13 @@
 
          if (create) {
             modalTitle.textContent = 'Nuevo usuario';
-            fId.value = ''; fNombre.value = ''; fEmail.value = '';
-            fArea.value = ''; fJefe.value = '';
-            fPwd.value = ''; fPwd2.value = '';
+            fId.value = '';
+            fNombre.value = '';
+            fEmail.value = '';
+            fArea.value = '';
+            fJefe.value = '';
+            fPwd.value = '';
+            fPwd2.value = '';
             setRolesSelected(fRoles, []);
             if (pwdGroup) pwdGroup.style.display = '';
          } else if (data) {
@@ -251,16 +246,14 @@
             fArea.value = (data.area_id ?? '').toString();
             fJefe.value = (data.jefe_id ?? '').toString();
             setRolesSelected(fRoles, Array.isArray(data.roles_ids) ? data.roles_ids : []);
-            fPwd.value = ''; fPwd2.value = '';
+            fPwd.value = '';
+            fPwd2.value = '';
             if (pwdGroup) pwdGroup.style.display = 'none';
          }
 
-         // Mostrar modal con animación fade
          modalEl.style.display = 'block';
          modalEl.removeAttribute('aria-hidden');
          modalEl.setAttribute('aria-modal', 'true');
-
-         // Forzar reflow y luego agregar show (para que el fade funcione)
          void modalEl.offsetWidth;
          modalEl.classList.add('show');
 
@@ -275,22 +268,18 @@
 
          const bd = document.querySelector('.modal-backdrop.user-modal-backdrop');
 
-         // Quitar show primero para disparar el fade-out
          modalEl.classList.remove('show');
          if (bd) bd.classList.remove('show');
          document.body.classList.remove('modal-open');
 
-         // Tras la duración de la transición, esconder y limpiar
          setTimeout(() => {
             modalEl.style.display = 'none';
             modalEl.setAttribute('aria-hidden', 'true');
             modalEl.removeAttribute('aria-modal');
-
             if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
          }, MODAL_TRANSITION_MS);
       }
 
-      // Cerrar con botones data-dismiss="modal" o .close
       const closeBtns = modalEl.querySelectorAll('[data-dismiss="modal"], .close');
       closeBtns.forEach(btn => {
          btn.addEventListener('click', (e) => {
@@ -299,12 +288,10 @@
          });
       });
 
-      // Cerrar con ESC
       document.addEventListener('keydown', (e) => {
          if (e.key === 'Escape' && modalIsOpen) closeModal();
       });
 
-      // Cerrar al hacer click en el área oscura del modal (fuera del dialog)
       modalEl.addEventListener('mousedown', (e) => {
          if (!modalIsOpen) return;
          if (e.target === modalEl) {
@@ -313,21 +300,12 @@
          }
       });
 
-      // ---- Flujo centralizado: Nuevo/Editar segun selección + permisos ----
       async function openEdit(row) {
          if (!row) return;
          await openModal(false, row);
 
-         if (USE_DETAIL_FALLBACK && (!Array.isArray(row.roles_ids) || row.roles_ids.length === 0)) {
-            try {
-               AppLoader?.show('Cargando detalle…');
-               const det = await Api.get(`/api/v1/admin/usuarios/${row.id}`);
-               setRolesSelected(fRoles, det.data?.roles_ids || []);
-            } catch (err) {
-               handleApiError(err, 'No se pudo cargar el detalle de usuario');
-            } finally {
-               AppLoader?.hide();
-            }
+         if (USE_DETAIL_FALLBACK) {
+            // aquí podrías hacer GET detalle en el futuro
          }
       }
 
@@ -344,22 +322,35 @@
          }
       }
 
-      // ---- API Usuarios ----
+      function applyQuickFilter() {
+         if (!gridApi || !gridApi.setQuickFilter) return;
+         const text = (fQ?.value || '').trim();
+         gridApi.setQuickFilter(text);
+      }
+
       async function loadData() {
          try {
             AppLoader?.show('Cargando usuarios…');
+
             const params = new URLSearchParams({
-               page: '1', size: '100',
-               q: (fQ?.value || ''), activo: (fActivo?.value || '')
+               page: '1',
+               size: '200',
             });
+
+            const qText = (fQ?.value || '').trim();
+            if (qText !== '') params.set('q', qText);
+
+            if (fActivo && fActivo.value !== '') {
+               params.set('activo', fActivo.value);
+            }
+
             const j = await Api.get('/api/v1/admin/usuarios?' + params.toString());
             const rows = j.data || [];
 
-            if (gridOptions.api) gridOptions.api.setRowData(rows);
-            else if (gridApi?.setGridOption) gridApi.setGridOption('rowData', rows);
-
-            gridOptions.api?.deselectAll?.();
-            gridApi?.deselectAll?.();
+            if (gridApi && gridApi.setRowData) {
+               gridApi.setRowData(rows);
+               if (gridApi.deselectAll) gridApi.deselectAll();
+            }
 
             updateActionButtons();
             toast('info', `Usuarios cargados: ${rows.length}`);
@@ -373,21 +364,35 @@
       async function resetPwd(row) {
          const pwd = prompt('Nuevo password (mín. 6 caracteres):');
          if (!pwd) return;
-         if (pwd.length < 6) { toast('warning', 'El password debe tener al menos 6 caracteres'); return; }
+         if (pwd.length < 6) {
+            toast('warning', 'El password debe tener al menos 6 caracteres');
+            return;
+         }
          try {
             AppLoader?.show('Actualizando password…');
-            const j = await Api.patch('/api/v1/admin/usuarios/password', { id: row.id, password: pwd });
+            const j = await Api.patch('/api/v1/admin/usuarios/password', {
+               id: row.id,
+               password: pwd
+            });
             if (j?.ok) toast('success', 'Password actualizado');
             else toast('warning', 'No se pudo actualizar el password');
          } catch (err) {
             handleApiError(err, 'Error al actualizar password');
-         } finally { AppLoader?.hide(); }
+         } finally {
+            AppLoader?.hide();
+         }
       }
 
       async function delUser(row) {
-         if (!row) { toast('warning', 'Selecciona una fila para eliminar'); return; }
+         if (!row) {
+            toast('warning', 'Selecciona una fila para eliminar');
+            return;
+         }
          const canDel = await canPerm('admin.users.borrar');
-         if (!canDel) { toast('error', 'No tienes permiso para eliminar'); return; }
+         if (!canDel) {
+            toast('error', 'No tienes permiso para eliminar');
+            return;
+         }
          if (!window.confirm('¿Borrar (baja lógica) este usuario?')) return;
          try {
             AppLoader?.show('Eliminando usuario…');
@@ -400,7 +405,9 @@
             }
          } catch (err) {
             handleApiError(err, 'Error al borrar usuario');
-         } finally { AppLoader?.hide(); }
+         } finally {
+            AppLoader?.hide();
+         }
       }
 
       async function saveUser() {
@@ -412,28 +419,51 @@
             jefe_id: fJefe?.value ? parseInt(fJefe.value, 10) : null,
             roles: getSelectedValues(fRoles),
          };
-         if (!payload.nombre || !payload.email) { toast('warning', 'Nombre y email son requeridos'); return; }
+
+         if (!payload.nombre || !payload.email) {
+            toast('warning', 'Nombre y email son requeridos');
+            return;
+         }
 
          try {
             AppLoader?.show('Guardando…');
+
             if (!payload.id) {
                const canCreate = await canPerm('admin.users.crear');
-               if (!canCreate) { toast('error', 'No tienes permiso para crear'); return; }
+               if (!canCreate) {
+                  toast('error', 'No tienes permiso para crear');
+                  return;
+               }
 
                if (!fPwd?.value || fPwd.value.length < 6 || fPwd.value !== fPwd2?.value) {
-                  toast('warning', 'Password inválido o no coincide'); return;
+                  toast('warning', 'Password inválido o no coincide');
+                  return;
                }
                payload.password = fPwd.value;
+
                const j = await Api.post('/api/v1/admin/usuarios', payload);
-               if (j.ok) { toast('success', 'Usuario creado'); closeModal(); await loadData(); }
-               else toast('warning', 'No se pudo crear el usuario');
+               if (j.ok) {
+                  toast('success', 'Usuario creado');
+                  closeModal();
+                  await loadData();
+               } else {
+                  toast('warning', 'No se pudo crear el usuario');
+               }
             } else {
                const canEdit = await canPerm('admin.users.editar');
-               if (!canEdit) { toast('error', 'No tienes permiso para editar'); return; }
+               if (!canEdit) {
+                  toast('error', 'No tienes permiso para editar');
+                  return;
+               }
 
                const j = await Api.put('/api/v1/admin/usuarios', payload);
-               if (j.ok) { toast('success', 'Usuario actualizado'); closeModal(); await loadData(); }
-               else toast('warning', 'No se pudo actualizar el usuario');
+               if (j.ok) {
+                  toast('success', 'Usuario actualizado');
+                  closeModal();
+                  await loadData();
+               } else {
+                  toast('warning', 'No se pudo actualizar el usuario');
+               }
             }
          } catch (err) {
             handleApiError(err, 'Error al guardar usuario');
@@ -442,7 +472,6 @@
          }
       }
 
-      // ---- Eventos UI ----
       btnSearch?.addEventListener('click', loadData);
 
       btnNew?.addEventListener('click', async (e) => {
@@ -456,22 +485,39 @@
       });
 
       btnClear?.addEventListener('click', () => {
-         gridOptions.api?.deselectAll?.();
-         gridApi?.deselectAll?.();
+         if (gridApi && gridApi.deselectAll) gridApi.deselectAll();
          updateActionButtons();
       });
 
       btnSave?.addEventListener('click', saveUser);
 
-      fQ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); loadData(); } });
+      fQ?.addEventListener('keydown', (e) => {
+         if (e.key === 'Enter') {
+            e.preventDefault();
+            loadData();
+         }
+      });
 
-      // ---- Primera carga ----
+      fQ?.addEventListener('input', () => {
+         // quick filter local + si quieres recargar al vuelo, puedes también llamar loadData()
+         applyQuickFilter();
+      });
+
+      fActivo?.addEventListener('change', () => {
+         loadData();
+      });
+
       loadData();
 
-      if (window.__applyGates) { window.__applyGates(document); }
+      if (window.__applyGates) {
+         window.__applyGates(document);
+      }
       updateActionButtons();
    }
 
-   if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', init);
-   else init();
+   if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', init);
+   } else {
+      init();
+   }
 })();

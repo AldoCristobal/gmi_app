@@ -13,3 +13,43 @@ Rutinas omitidas: 130
 Tareas creadas: 1
 Rutinas omitidas: 131
 [2025-11-18 17-22] Job cron_rutinas finalizado.
+[2025-11-25 11-06] Iniciando job de cron_rutinas...
+PHP Fatal error:  Uncaught Error: Call to undefined method App\Repositories\TareaRepository::existsForPeriodo() in C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php:146
+Stack trace:
+#0 C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php(46): App\Services\RutinaSchedulerService->procesarRutina()
+#1 C:\apache\htdocs\erp-gmi\bin\cron_rutinas.php(17): App\Services\RutinaSchedulerService->ejecutar()
+#2 {main}
+  thrown in C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php on line 146
+
+Fatal error: Uncaught Error: Call to undefined method App\Repositories\TareaRepository::existsForPeriodo() in C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php:146
+Stack trace:
+#0 C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php(46): App\Services\RutinaSchedulerService->procesarRutina()
+#1 C:\apache\htdocs\erp-gmi\bin\cron_rutinas.php(17): App\Services\RutinaSchedulerService->ejecutar()
+#2 {main}
+  thrown in C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php on line 146
+[2025-11-25 11-06] Job cron_rutinas finalizado.
+[2025-11-25 11-47] Iniciando job de cron_rutinas...
+PHP Fatal error:  Uncaught Error: Call to undefined method App\Repositories\TareaRepository::crear() in C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php:173
+Stack trace:
+#0 C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php(46): App\Services\RutinaSchedulerService->procesarRutina()
+#1 C:\apache\htdocs\erp-gmi\bin\cron_rutinas.php(17): App\Services\RutinaSchedulerService->ejecutar()
+#2 {main}
+  thrown in C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php on line 173
+
+Fatal error: Uncaught Error: Call to undefined method App\Repositories\TareaRepository::crear() in C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php:173
+Stack trace:
+#0 C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php(46): App\Services\RutinaSchedulerService->procesarRutina()
+#1 C:\apache\htdocs\erp-gmi\bin\cron_rutinas.php(17): App\Services\RutinaSchedulerService->ejecutar()
+#2 {main}
+  thrown in C:\apache\htdocs\erp-gmi\app\Services\RutinaSchedulerService.php on line 173
+[2025-11-25 11-47] Job cron_rutinas finalizado.
+[2025-11-25 11-47] Iniciando job de cron_rutinas...
+[2025-11-25] Rutinas ejecutadas
+Tareas creadas: 4
+Rutinas omitidas: 143
+[2025-11-25 11-47] Job cron_rutinas finalizado.
+[2025-11-25 11-57] Iniciando job de cron_rutinas...
+[2025-11-25] Rutinas ejecutadas
+Tareas creadas: 4
+Rutinas omitidas: 143
+[2025-11-25 11-57] Job cron_rutinas finalizado.

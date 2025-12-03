@@ -1,4 +1,4 @@
-// /assets/js/menu.js
+// public/assets/js/menu.js
 (function () {
    const DEBUG = false;
    const log = (...a) => DEBUG && console.log('[menu]', ...a);
@@ -16,7 +16,6 @@
       update: (id) => `/api/v1/admin/menu?id=${id}`,
       remove: (id, mode = 'cascade') => `/api/v1/admin/menu?id=${id}&mode=${mode}`,
       reorder: `/api/v1/admin/menu/reorder`,
-      // opcional preview: `/api/v1/admin/menu/preview?...`
    };
 
    // ------- Notificaciones -------
@@ -66,7 +65,7 @@
       if (!btnSave) return;
       if (flag) {
          btnSave.disabled = true;
-         btnSave.dataset._html = btnSave.innerHTML;
+         if (!btnSave.dataset._html) btnSave.dataset._html = btnSave.innerHTML;
          btnSave.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>';
       } else {
          btnSave.innerHTML = btnSave.dataset._html || '<i class="fas fa-save"></i> Guardar';
@@ -78,7 +77,7 @@
       btnSaveOrder.disabled = !!flag;
       btnSaveOrder.classList.toggle('d-none', !_orderDirty && !flag);
       if (flag) {
-         btnSaveOrder.dataset._html = btnSaveOrder.innerHTML;
+         if (!btnSaveOrder.dataset._html) btnSaveOrder.dataset._html = btnSaveOrder.innerHTML;
          btnSaveOrder.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>';
       } else if (btnSaveOrder.dataset._html) {
          btnSaveOrder.innerHTML = btnSaveOrder.dataset._html;
@@ -152,14 +151,17 @@
    function toggleFieldsByTipo(tipo) {
       const showItem = (tipo === 'item');
       const showExt = (tipo === 'external');
-      // Vista solo en item
-      fVista.closest('.form-row').style.display = showItem ? '' : 'none';
-      // URL+target solo en external
-      fUrl.closest('.form-row').style.display = showExt ? '' : 'none';
-      // Header/Divider: solo etiqueta/visible/icono opcional; ocultar ruta/urls
+
+      // Vista+Slug están en la misma fila (fVista.closest('.form-row'))
+      const vistaRow = fVista?.closest('.form-row');
+      const urlRow = fUrl?.closest('.form-row');
+
+      if (vistaRow) vistaRow.style.display = showItem ? '' : 'none';
+      if (urlRow) urlRow.style.display = showExt ? '' : 'none';
+
       if (tipo === 'header' || tipo === 'divider') {
-         fVista.closest('.form-row').style.display = 'none';
-         fUrl.closest('.form-row').style.display = 'none';
+         if (vistaRow) vistaRow.style.display = 'none';
+         if (urlRow) urlRow.style.display = 'none';
       }
    }
 
@@ -209,13 +211,18 @@
    }
 
    function escapeHtml(s) {
-      return (s || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+      return (s || '').replace(/[&<>"']/g, (m) => ({
+         '&': '&amp;',
+         '<': '&lt;',
+         '>': '&gt;',
+         '"': '&quot;',
+         "'": '&#39;'
+      }[m]));
    }
 
    function collectTreeOrder() {
       const tree = getTree();
       const out = [];
-      let i = 0;
       function walk(node, parentId) {
          const children = node.getChildren() || [];
          children.forEach((ch, idx) => {
@@ -235,7 +242,7 @@
 
    function markOrderDirty(flag) {
       _orderDirty = !!flag;
-      btnSaveOrder.classList.toggle('d-none', !_orderDirty);
+      if (btnSaveOrder) btnSaveOrder.classList.toggle('d-none', !_orderDirty);
    }
 
    // ------- Carga árbol -------
@@ -258,7 +265,6 @@
             source = rebuildTreeFromFlat(data);
          }
 
-         // Inicializa o recarga FancyTree
          const exists = $(treeEl).data('fancytree-initialized');
          if (!exists) {
             $(treeEl).fancytree({
@@ -267,14 +273,19 @@
                titlesTabbable: true,
                glyph: false,
                source,
-               filter: { mode: "dimm", autoApply: true, counter: true, highlight: true },
+               filter: {
+                  mode: "dimm",
+                  autoApply: true,
+                  counter: true,
+                  highlight: true
+               },
                activate: (ev, data) => {
                   _selectedNode = data.node;
                   fillForm(data.node.data);
                },
                dnd5: {
                   preventVoidMoves: true,
-                  preventRecursion: true, // nombre correcto
+                  preventRecursive: true, // <- nombre correcto de la opción
                   dragStart: (node, data) => true,
                   dragEnter: (node, data) => {
                      const targetType = node.data?.tipo || 'item';
@@ -287,24 +298,31 @@
                      data.otherNode.setTitle(renderNodeTitle(data.otherNode.data));
                      markOrderDirty(true);
                   }
-}
+               }
             });
             $(treeEl).data('fancytree-initialized', true);
-            // scroll interno
+
             const $ct = $(treeEl).find('.fancytree-container');
-            $ct.css({ 'max-height': '520px', 'overflow-y': 'auto', 'overscroll-behavior': 'contain' });
+            $ct.css({
+               'max-height': '520px',
+               'overflow-y': 'auto',
+               'overscroll-behavior': 'contain'
+            });
          } else {
             getTree().reload(source);
          }
 
          // Expandir un poco y seleccionar
-         getTree().expandAll(true);
-         if (selectId) {
-            const node = getTree().getNodeByKey(String(selectId));
-            node && node.setActive();
-         } else {
-            const first = getTree().getFirstChild();
-            first && first.setActive();
+         const tree = getTree();
+         if (tree) {
+            tree.expandAll(true);
+            if (selectId) {
+               const node = tree.getNodeByKey(String(selectId));
+               node && node.setActive();
+            } else {
+               const first = tree.getFirstChild();
+               first && first.setActive();
+            }
          }
 
          markOrderDirty(false);
@@ -318,15 +336,13 @@
    }
 
    function mapNodeForTree(n) {
-      // Remapea recursivo para fancytree
-      const node = {
+      return {
          key: String(n.id),
          title: renderNodeTitle(n),
          folder: true,
          children: Array.isArray(n.children) ? n.children.map(mapNodeForTree) : [],
          data: { ...n }
       };
-      return node;
    }
 
    // ------- Acciones: Crear / Eliminar -------
@@ -407,7 +423,6 @@
          const res = await Api.put(API.update(d.id), d);
          if (res.ok) {
             toast.success('Guardado');
-            // Actualiza data local y título
             node.data = { ...node.data, ...d };
             node.setTitle(renderNodeTitle(node.data));
             _lastJsonSnapshot = JSON.stringify(normalizeForForm(node.data));
@@ -426,7 +441,6 @@
    function resetDetail() {
       if (!_selectedNode) return;
       const base = normalizeForForm(_selectedNode.data);
-      // si hay snapshot, úsalo
       const snap = _lastJsonSnapshot ? JSON.parse(_lastJsonSnapshot) : base;
       fillForm({ ..._selectedNode.data, ...snap });
    }
@@ -441,7 +455,6 @@
          if (res.ok) {
             toast.success('Orden guardado');
             markOrderDirty(false);
-            // recarga para normalizar orden en backend y refrescar títulos
             await loadMenu(_selectedNode?.data?.id);
          } else {
             toast.error(res.msg || 'No se pudo guardar el orden');
@@ -491,5 +504,10 @@
 
    // ------- Primera carga -------
    loadMenu();
+
+   // Aplicar gating de permisos en esta vista
+   if (window.__applyGates) {
+      window.__applyGates(document);
+   }
 
 })();

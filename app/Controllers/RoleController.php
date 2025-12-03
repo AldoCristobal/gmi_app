@@ -10,7 +10,6 @@ use App\Services\RoleService;
 
 final class RoleController
 {
-   /** @var RoleService */
    private RoleService $svc;
 
    public function __construct()
@@ -23,15 +22,51 @@ final class RoleController
    public function index(Request $r): void
    {
       $q = trim((string)($r->get['q'] ?? ''));
-      $res = $this->svc->listar($q);
-      Response::json($this->httpify($res), $this->statusOf($res));
+
+      // NUEVO: usar el método estándar list() del service.
+      $data = $this->svc->list(['q' => $q]);
+
+      $res = [
+         'ok'   => true,
+         'data' => $data,
+      ];
+
+      Response::json($res, 200);
+   }
+
+   /**
+    * OPCIONAL / FUTURO:
+    * GET /api/v1/roles/show?id=123
+    * Usa el método estándar get() del service.
+    */
+   public function show(Request $r): void
+   {
+      $id = (int)($r->get['id'] ?? 0);
+      if ($id <= 0) {
+         $res = ['ok' => false, 'code' => 'VALIDATION', 'msg' => 'id inválido'];
+         Response::json($this->httpify($res), $this->statusOf($res));
+         return;
+      }
+
+      try {
+         $role = $this->svc->get($id);
+         $res  = ['ok' => true, 'data' => $role];
+         Response::json($res, 200);
+      } catch (\RuntimeException $e) {
+         // get() lanza excepción si no existe
+         $res = ['ok' => false, 'code' => 'NOT_FOUND', 'msg' => 'Rol no encontrado'];
+         Response::json($this->httpify($res), $this->statusOf($res));
+      }
    }
 
    /** POST /api/v1/roles */
    public function store(Request $r): void
    {
       $in = $this->json($r);
+
+      // Por compatibilidad, seguimos usando crear() (legacy)
       $res = $this->svc->crear($in);
+
       Response::json($this->httpify($res), $res['ok'] ? 201 : $this->statusOf($res));
    }
 
@@ -40,7 +75,10 @@ final class RoleController
    {
       $in = $this->json($r);
       $id = (int)($in['id'] ?? 0);
+
+      // Por compatibilidad, seguimos usando actualizar() (legacy)
       $res = $this->svc->actualizar($id, $in);
+
       Response::json($this->httpify($res), $this->statusOf($res));
    }
 
@@ -48,7 +86,10 @@ final class RoleController
    public function destroy(Request $r): void
    {
       $id = (int)($r->get['id'] ?? 0);
+
+      // Por compatibilidad, seguimos usando eliminar() (legacy)
       $res = $this->svc->eliminar($id);
+
       Response::json($this->httpify($res), $this->statusOf($res));
    }
 
@@ -80,8 +121,12 @@ final class RoleController
    private function httpify(array $res): array
    {
       if (($res['ok'] ?? false) === true) return $res;
-      if (!isset($res['code']) && isset($res['error']['code'])) $res['code'] = $res['error']['code'];
-      if (!isset($res['msg']) && isset($res['error']['message'])) $res['msg'] = $res['error']['message'];
+      if (!isset($res['code']) && isset($res['error']['code'])) {
+         $res['code'] = $res['error']['code'];
+      }
+      if (!isset($res['msg']) && isset($res['error']['message'])) {
+         $res['msg'] = $res['error']['message'];
+      }
       unset($res['error']);
       return $res;
    }

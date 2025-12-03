@@ -7,81 +7,99 @@ namespace App\Controllers;
 use App\Http\Request;
 use App\Http\Response;
 use App\Services\UserService;
-use App\Repositories\UserRepository;
 
 final class UserController
 {
-   private UserRepository $repo;
+   public function __construct(private UserService $svc = new UserService()) {}
 
-   public function __construct(private UserService $svc = new UserService())
-   {
-      $this->repo = $repo ?? new UserRepository();
-   }
-
+   /** GET /api/v1/admin/usuarios?page=&size=&q=&activo= */
    public function index(Request $req): void
    {
-      $page  = max(1, (int)($req->query['page'] ?? 1));
-      $size  = min(500, max(1, (int)($req->query['size'] ?? 100)));
-      $q     = trim((string)($req->query['q'] ?? ''));
-      $activoParam = $req->query['activo'] ?? '';
-      $activo = ($activoParam === '1' || $activoParam === '0') ? (int)$activoParam : null;
+      $query = $req->query ?? [];
 
-      [$rows, $total] = $this->repo->listUsers($q === '' ? null : $q, $activo, $page, $size);
+      $out = $this->svc->list($query);
 
-      Response::json([
-         'ok'   => true,
-         'data' => $rows,
-         'meta' => [
-            'page'  => $page,
-            'size'  => $size,
-            'total' => $total
-         ]
-      ]);
+      Response::json($out, 200);
    }
-   public function store(Request $r): void
+
+   /** POST /api/v1/admin/usuarios */
+   public function store(Request $req): void
    {
-      $in = $this->json($r);
-      $out = $this->svc->crear($in);
-      Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
+      $input = $this->json($req);
+      $out   = $this->svc->create($input);
+
+      $status = ($out['ok'] ?? false) ? 200 : 422;
+      Response::json($out, $status);
    }
-   public function update(Request $r): void
+
+   /** PUT /api/v1/admin/usuarios */
+   public function update(Request $req): void
    {
-      $in = $this->json($r);
-      $id = (int)($in['id'] ?? 0);
+      $input = $this->json($req);
+      $id    = (int) ($input['id'] ?? 0);
+
       if ($id <= 0) {
-         Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => 'id requerido']], 400);
+         Response::json([
+            'ok'    => false,
+            'error' => ['code' => 'VALIDATION', 'message' => 'id required'],
+         ], 400);
          return;
       }
-      $out = $this->svc->actualizar($id, $in);
-      Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
+
+      $out = $this->svc->update($id, $input);
+      $status = ($out['ok'] ?? false) ? 200 : 422;
+      Response::json($out, $status);
    }
-   public function resetPassword(Request $r): void
+
+   /** PATCH /api/v1/admin/usuarios/password */
+   public function resetPassword(Request $req): void
    {
-      $in = $this->json($r);
-      $id = (int)($in['id'] ?? 0);
-      $pwd = (string)($in['password'] ?? '');
+      $input = $this->json($req);
+      $id    = (int) ($input['id'] ?? 0);
+      $pwd   = (string) ($input['password'] ?? '');
+
       if ($id <= 0 || $pwd === '') {
-         Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION']], 400);
+         Response::json([
+            'ok'    => false,
+            'error' => ['code' => 'VALIDATION', 'message' => 'id and password required'],
+         ], 400);
          return;
       }
-      $out = $this->svc->resetPassword($id, $pwd);
-      Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
+
+      $out    = $this->svc->resetPassword($id, $pwd);
+      $status = ($out['ok'] ?? false) ? 200 : 422;
+      Response::json($out, $status);
    }
-   public function destroy(Request $r): void
+
+   /** DELETE /api/v1/admin/usuarios?id=123 */
+   public function destroy(Request $req): void
    {
-      $in = $this->json($r);
-      $id = (int)($in['id'] ?? 0);
+      $id = (int) (($req->query['id'] ?? 0));
+
       if ($id <= 0) {
-         Response::json(['ok' => false, 'error' => ['code' => 'VALIDATION']], 400);
+         Response::json([
+            'ok'    => false,
+            'error' => ['code' => 'VALIDATION', 'message' => 'id required'],
+         ], 400);
          return;
       }
-      $out = $this->svc->borrar($id);
-      Response::json($out, ($out['ok'] ?? false) ? 200 : 404);
+
+      $out = $this->svc->delete($id);
+
+      if (!($out['ok'] ?? false)) {
+         $code = $out['error']['code'] ?? '';
+         $status = $code === 'NOT_FOUND' ? 404 : 422;
+         Response::json($out, $status);
+         return;
+      }
+
+      Response::json($out, 200);
    }
+
    private function json(Request $r): array
    {
       $raw = file_get_contents('php://input') ?: '';
-      $j = json_decode($raw, true);
-      return is_array($j) ? $j : $r->post;
+      $j   = json_decode($raw, true);
+      return is_array($j) ? $j : ($r->post ?? []);
    }
 }

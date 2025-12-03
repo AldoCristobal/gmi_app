@@ -48,6 +48,14 @@ final class EmpresaObligacionRepository
       return $rows;
    }
 
+   /**
+    * Alias global: lista por empresa (para seguir el estándar list()).
+    */
+   public function list(int $empresaId): array
+   {
+      return $this->listByEmpresa($empresaId);
+   }
+
    /** IDs actualmente asignados a la empresa */
    public function getIdsAsignadas(int $empresaId): array
    {
@@ -83,6 +91,14 @@ final class EmpresaObligacionRepository
          ':activo'          => (int)($in['activo'] ?? 1),
       ]);
       return (int)$this->db->lastInsertId();
+   }
+
+   /**
+    * Alias global: create() para mantener el patrón de otros repos.
+    */
+   public function create(array $in): int
+   {
+      return $this->insert($in);
    }
 
    /** Actualiza un registro puntual (flujo de edición individual) */
@@ -124,6 +140,14 @@ final class EmpresaObligacionRepository
       $st = $this->db->prepare("DELETE FROM empresa_obligacion WHERE id = :id LIMIT 1");
       $st->execute([':id' => $id]);
       return $st->rowCount() > 0;
+   }
+
+   /**
+    * Alias global: deleteById() (a veces lo usamos en otros repos).
+    */
+   public function deleteById(int $id): bool
+   {
+      return $this->delete($id);
    }
 
    /** Inserta masivamente con defaults mínimos */
@@ -185,6 +209,13 @@ final class EmpresaObligacionRepository
       return $this->getIdsAsignadas($empresaId);
    }
 
+   /**
+    * Alias global: sync() “corto” para services.
+    */
+   public function sync(int $empresaId, array $nuevosIds): array
+   {
+      return $this->syncForEmpresa($empresaId, $nuevosIds);
+   }
 
    public function listarPorEmpresaConObligacion(int $empresaId): array
    {
@@ -221,6 +252,14 @@ final class EmpresaObligacionRepository
    }
 
    /**
+    * Alias global más “neutro” para usar desde servicios de rutinas.
+    */
+   public function listWithObligacionByEmpresa(int $empresaId): array
+   {
+      return $this->listarPorEmpresaConObligacion($empresaId);
+   }
+
+   /**
     * Busca un registro empresa_obligacion por empresa + obligación.
     */
    public function buscarEmpresaObligacion(int $empresaId, int $obligacionId): ?array
@@ -242,6 +281,14 @@ final class EmpresaObligacionRepository
       $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
       return $row ?: null;
+   }
+
+   /**
+    * Alias global: findByEmpresaAndObligacion()
+    */
+   public function findByEmpresaAndObligacion(int $empresaId, int $obligacionId): ?array
+   {
+      return $this->buscarEmpresaObligacion($empresaId, $obligacionId);
    }
 
    /**
@@ -279,6 +326,14 @@ final class EmpresaObligacionRepository
          'periodicidad'      => $data['periodicidad'],
          'id'                => $id,
       ]);
+   }
+
+   /**
+    * Alias global: updateRutinaById() (por si quieres nombre homogéneo).
+    */
+   public function updateRutinaById(int $id, array $data): bool
+   {
+      return $this->actualizarRutina($id, $data);
    }
 
    /**
@@ -343,5 +398,13 @@ final class EmpresaObligacionRepository
       ]);
 
       return (int)$this->db->lastInsertId();
+   }
+
+   /**
+    * Alias global: createRutina() “en inglés”.
+    */
+   public function createRutina(array $data): int
+   {
+      return $this->crearRutina($data);
    }
 }

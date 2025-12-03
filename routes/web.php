@@ -6,11 +6,11 @@ use App\Http\Middlewares\AuthMiddleware;
 use App\Http\Middlewares\RbacMiddleware;
 
 $router->get('/login', function ($req) {
-   $html = \App\Support\View::render('auth/login', [
+   $html = View::render('auth/login', [
       'title'   => 'Iniciar sesión',
       'isLogin' => true
    ]);
-   \App\Http\Response::html($html);
+   Response::html($html);
 });
 
 // Home: redirige según sesión
@@ -19,16 +19,11 @@ $router->get('/', function ($req) {
       Response::redirect('/admin/usuarios');
    } else {
       $html = View::render('auth/login', [
-         'title' => 'Iniciar sesión'
+         'title' => 'Iniciar sesión',
+         'isLogin' => true,
       ]);
       Response::html($html);
    }
-});
-
-// Login explícito (por si navegan directo)
-$router->get('/login', function ($req) {
-   $html = View::render('auth/login', ['title' => 'Iniciar sesión']);
-   Response::html($html);
 });
 
 // Página de administración de usuarios (protegida)
@@ -50,7 +45,7 @@ $router->get('/admin/roles', [
    function ($req) {
       $html = View::render('admin/roles', [
          'title'  => 'Administrar roles',
-         'script' => 'roles.js'   // ⬅️ crea public/assets/js/roles.js
+         'script' => 'roles.js'
       ]);
       Response::html($html);
    }
@@ -62,7 +57,7 @@ $router->get('/admin/menu', [
    function ($req) {
       $html = View::render('admin/menu', [
          'title'  => 'Administrar menú',
-         'script' => 'menu.js' // ⬅️ asegúrate de tener /assets/js/menu.js
+         'script' => 'menu.js'
       ]);
       Response::html($html);
    }
@@ -84,19 +79,7 @@ $router->get('/empresas', [
       $html = \App\Support\View::render('empresas/index', [
          'title'      => 'Empresas',
          'script'     => 'empresas.index.js',
-         'csrfToken'  => $_SESSION['csrf_token'], // <- pásalo a la vista
-      ]);
-      \App\Http\Response::html($html);
-   }
-]);
-
-$router->get('/empresas/expediente', [
-   new \App\Http\Middlewares\AuthMiddleware(),
-   new \App\Http\Middlewares\RbacMiddleware(['empresa.expediente']),
-   function ($req) {
-      $html = \App\Support\View::render('empresas/expediente', [
-         'title'  => 'Expediente de Empresas',
-         'script' => 'empresas.expediente.js'
+         'csrfToken'  => $_SESSION['csrf_token'],
       ]);
       \App\Http\Response::html($html);
    }
@@ -117,13 +100,12 @@ $router->get('/revisiones', [
 
       $html = \App\Support\View::render('revisiones/index', [
          'title'     => 'Revisiones',
-         'script'    => 'revisiones.index.js', // /public/assets/js/revisiones.index.js
+         'script'    => 'revisiones.index.js',
          'csrfToken' => $_SESSION['csrf_token'],
       ]);
       \App\Http\Response::html($html);
    }
 ]);
-
 
 // Historial de Revisiones (solo lectura)
 $router->get('/revisiones/historial', [
@@ -146,11 +128,11 @@ $router->get('/revisiones/historial', [
    }
 ]);
 
-
-// Creacion de rutinas (solo lectura)
+// Creación de rutinas
 $router->get('/empresas/rutinas', [
    new \App\Http\Middlewares\AuthMiddleware(),
-   new \App\Http\Middlewares\RbacMiddleware(['empresa.rutinas.ver']),
+   // FIX: permiso existente y alineado con API (empresa.obligacion.ver)
+   new \App\Http\Middlewares\RbacMiddleware(['empresa.obligacion.ver']),
    function ($req) {
       // Asegura CSRF en la vista
       if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -167,7 +149,6 @@ $router->get('/empresas/rutinas', [
       \App\Http\Response::html($html);
    }
 ]);
-
 
 // MIS TAREAS
 $router->get('/tareas/mis_tareas', [
@@ -186,6 +167,94 @@ $router->get('/tareas/mis_tareas', [
          'script'    => 'tareas.mis.js',
          'csrfToken' => $_SESSION['csrf_token'],
       ]);
+      \App\Http\Response::html($html);
+   }
+]);
+
+// ADMIN: Asignar menú a roles
+$router->get('/admin/menu_rol', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   new \App\Http\Middlewares\RbacMiddleware(['admin.menu.asignar']),
+   function ($req) {
+      // Asegura CSRF en la vista (mismo patrón que en mis_tareas)
+      if (session_status() !== PHP_SESSION_ACTIVE) {
+         \App\Security\Session::start();
+      }
+      if (empty($_SESSION['csrf_token'])) {
+         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      }
+
+      $html = \App\Support\View::render('admin/menu_rol', [
+         'title'     => 'Asignar menú a roles',
+         'script'    => 'admin.menu_rol.js',
+         'csrfToken' => $_SESSION['csrf_token'],
+      ]);
+
+      \App\Http\Response::html($html);
+   }
+]);
+
+
+$router->get('/tareas/extraordinarias', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   new \App\Http\Middlewares\RbacMiddleware(['tareas.extra.ver']),
+   function ($req) {
+      if (session_status() !== PHP_SESSION_ACTIVE) {
+         \App\Security\Session::start();
+      }
+      if (empty($_SESSION['csrf_token'])) {
+         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      }
+
+      $html = \App\Support\View::render('tareas/extraordinarias', [
+         'title'     => 'Tareas extraordinarias',
+         'script'    => 'tareas.extra.js',
+         'csrfToken' => $_SESSION['csrf_token'],
+      ]);
+      \App\Http\Response::html($html);
+   }
+]);
+
+$router->get('/tareas/evaluacion', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   new \App\Http\Middlewares\RbacMiddleware(['tareas.evaluacion.ver']),
+   function ($req) {
+      if (session_status() !== PHP_SESSION_ACTIVE) {
+         \App\Security\Session::start();
+      }
+      if (empty($_SESSION['csrf_token'])) {
+         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      }
+
+      $html = \App\Support\View::render('tareas/evaluacion', [
+         'title'     => 'Evaluación de tareas',
+         'script'    => 'tareas.evaluacion.js',
+         'csrfToken' => $_SESSION['csrf_token'],
+      ]);
+
+      \App\Http\Response::html($html);
+   }
+]);
+
+
+// Vista del panel de expediente
+$router->get('/empresas/expediente-panel', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   new \App\Http\Middlewares\RbacMiddleware(['empresa.expediente']),
+   function ($req) {
+      if (session_status() !== PHP_SESSION_ACTIVE) {
+         \App\Security\Session::start();
+      }
+      if (empty($_SESSION['csrf_token'])) {
+         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      }
+
+      $html = \App\Support\View::render('empresas/expediente-panel', [
+         'title'     => 'Expediente de empresas',
+         'script'    => 'empresas.expediente-panel.js',
+         'csrfToken' => $_SESSION['csrf_token'],
+      ]);
+
       \App\Http\Response::html($html);
    }
 ]);

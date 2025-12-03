@@ -13,15 +13,109 @@ final class MenuService
 {
    public function __construct(private MenuRepository $repo = new MenuRepository()) {}
 
-   /** Lista plana por namespace (el front arma el árbol) */
-   public function list(string $namespace = 'sidebar'): array
+   /**
+    * NUEVO ESTÁNDAR:
+    * Lista plana usando filtros (p.ej. ['namespace' => 'sidebar']).
+    * Devuelve SOLO la lista de items.
+    */
+   public function list(array $filters = []): array
+   {
+      $ns  = $filters['namespace'] ?? 'sidebar';
+      $res = $this->listar($ns);
+      return $res['data'] ?? [];
+   }
+
+   /**
+    * LEGACY:
+    * Lista plana por namespace (el front arma el árbol).
+    * Devuelve envoltura ok/data.
+    */
+   public function listar(string $namespace = 'sidebar'): array
    {
       try {
          $rows = $this->repo->list($namespace);
          return ['ok' => true, 'data' => $rows];
       } catch (Throwable $e) {
-         return ['ok' => false, 'error' => ['code' => 'SERVER', 'message' => $e->getMessage()]];
+         return [
+            'ok'    => false,
+            'error' => ['code' => 'SERVER', 'message' => $e->getMessage()],
+         ];
       }
+   }
+
+   /**
+    * NUEVO ESTÁNDAR:
+    * Obtiene un ítem de menú por ID o lanza RuntimeException si no existe.
+    */
+   public function get(int $id): array
+   {
+      if ($id <= 0) {
+         throw new InvalidArgumentException('id inválido');
+      }
+
+      $row = $this->repo->findById($id);
+      if (!$row) {
+         throw new RuntimeException('Elemento de menú no encontrado');
+      }
+
+      return $row;
+   }
+
+   /**
+    * NUEVO ESTÁNDAR:
+    * Crea ítem de menú y devuelve su ID.
+    * Usa la lógica de crear().
+    */
+   public function create(array $d): int
+   {
+      $res = $this->crear($d);
+      if (!($res['ok'] ?? false)) {
+         $msg = $res['error']['message'] ?? 'Error al crear menú';
+         throw new RuntimeException($msg);
+      }
+      return (int)($res['data']['id'] ?? 0);
+   }
+
+   /**
+    * NUEVO ESTÁNDAR:
+    * Actualiza ítem de menú (sin mover jerarquía).
+    * Devuelve true si se actualizó, false si no existe.
+    */
+   public function update(int $id, array $d): bool
+   {
+      $d['id'] = $id;
+      $res     = $this->actualizar($d);
+
+      if (!($res['ok'] ?? false)) {
+         $code = $res['error']['code'] ?? '';
+         if ($code === 'NOT_FOUND') {
+            return false;
+         }
+         $msg = $res['error']['message'] ?? 'Error al actualizar menú';
+         throw new RuntimeException($msg);
+      }
+
+      return true;
+   }
+
+   /**
+    * NUEVO ESTÁNDAR:
+    * Elimina (cascade) un ítem de menú. Devuelve true si se eliminó, false si no existe.
+    */
+   public function delete(int $id): bool
+   {
+      $res = $this->eliminar($id, 'cascade');
+
+      if (!($res['ok'] ?? false)) {
+         $code = $res['error']['code'] ?? '';
+         if ($code === 'NOT_FOUND') {
+            return false;
+         }
+         $msg = $res['error']['message'] ?? 'Error al eliminar menú';
+         throw new RuntimeException($msg);
+      }
+
+      return true;
    }
 
    /** Crear ítem (calcula orden = max+1) */
@@ -35,16 +129,18 @@ final class MenuService
             throw new RuntimeException('El slug ya existe entre los hermanos');
          }
 
-         // Si no viene orden, lo calculamos como max+1
          if (!isset($data['orden'])) {
             $max = $this->repo->maxOrden($data['parent_id'] ?? null, $data['namespace'] ?? 'sidebar');
-            $data['orden'] = (int) (($max ?? -1) + 1);
+            $data['orden'] = (int)(($max ?? -1) + 1);
          }
 
          $id = $this->repo->create($data);
          return ['ok' => true, 'data' => ['id' => $id]];
       } catch (Throwable $e) {
-         return ['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => $e->getMessage()]];
+         return [
+            'ok'    => false,
+            'error' => ['code' => 'VALIDATION', 'message' => $e->getMessage()],
+         ];
       }
    }
 
@@ -55,11 +151,13 @@ final class MenuService
          $id = (int)($d['id'] ?? 0);
          if (!$id) throw new InvalidArgumentException('ID requerido');
 
-         $current = $this->repo->getById($id);
-         if (!$current) return ['ok' => false, 'error' => ['code' => 'NOT_FOUND']];
+         $current = $this->repo->findById($id);
+         if (!$current) {
+            return ['ok' => false, 'error' => ['code' => 'NOT_FOUND']];
+         }
 
          $data = $this->norm($d, true);
-         unset($data['parent_id'], $data['orden']); // evitar cambios de jerarquía aquí
+         unset($data['parent_id'], $data['orden']);
 
          $merged = array_merge($current, $data);
          $this->validateTypeFields($merged);
@@ -73,7 +171,10 @@ final class MenuService
          $ok = $this->repo->update($id, $data);
          return $ok ? ['ok' => true] : ['ok' => false, 'error' => ['code' => 'NOT_MODIFIED']];
       } catch (Throwable $e) {
-         return ['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => $e->getMessage()]];
+         return [
+            'ok'    => false,
+            'error' => ['code' => 'VALIDATION', 'message' => $e->getMessage()],
+         ];
       }
    }
 
@@ -81,18 +182,23 @@ final class MenuService
    public function eliminar(int $id, string $mode = 'cascade'): array
    {
       try {
-         $current = $this->repo->getById($id);
-         if (!$current) return ['ok' => false, 'error' => ['code' => 'NOT_FOUND']];
+         $current = $this->repo->findById($id);
+         if (!$current) {
+            return ['ok' => false, 'error' => ['code' => 'NOT_FOUND']];
+         }
 
          if ($mode === 'reparent') {
             $ok = $this->repo->reparentChildrenToParent($id, $current['parent_id'] ?? null)
                && $this->repo->delete($id);
          } else {
-            $ok = $this->repo->deleteCascade($id); // usa delete() si tienes FK CASCADE
+            $ok = $this->repo->deleteCascade($id);
          }
          return ['ok' => (bool)$ok];
       } catch (Throwable $e) {
-         return ['ok' => false, 'error' => ['code' => 'SERVER', 'message' => $e->getMessage()]];
+         return [
+            'ok'    => false,
+            'error' => ['code' => 'SERVER', 'message' => $e->getMessage()],
+         ];
       }
    }
 
@@ -100,7 +206,9 @@ final class MenuService
    public function reorder(array $changes): array
    {
       try {
-         if (!is_array($changes) || !count($changes)) return ['ok' => true, 'saved' => 0];
+         if (!is_array($changes) || !count($changes)) {
+            return ['ok' => true, 'saved' => 0];
+         }
 
          foreach ($changes as $c) {
             if (!isset($c['id'])) throw new InvalidArgumentException('Cada cambio requiere id');
@@ -115,28 +223,33 @@ final class MenuService
          $saved = $this->repo->reorderBatch($changes);
          return ['ok' => true, 'saved' => $saved];
       } catch (Throwable $e) {
-         return ['ok' => false, 'error' => ['code' => 'VALIDATION', 'message' => $e->getMessage()]];
+         return [
+            'ok'    => false,
+            'error' => ['code' => 'VALIDATION', 'message' => $e->getMessage()],
+         ];
       }
    }
 
-   /** (Opcional) Roles vinculados a un ítem */
    public function roles(int $menuId): array
    {
-      // Solo si implementas getRolesForMenu en el repositorio:
       if (!method_exists($this->repo, 'getRolesForMenu')) {
-         return ['ok' => false, 'error' => ['code' => 'NOT_IMPLEMENTED', 'message' => 'Repo::getRolesForMenu no implementado']];
+         return [
+            'ok'    => false,
+            'error' => [
+               'code'    => 'NOT_IMPLEMENTED',
+               'message' => 'Repo::getRolesForMenu no implementado',
+            ],
+         ];
       }
       return ['ok' => true, 'data' => $this->repo->getRolesForMenu($menuId)];
    }
 
-   /** Asignar roles a un ítem */
    public function setRoles(int $menuId, array $roles): array
    {
       $this->repo->assignToRoles($menuId, array_map('intval', $roles));
       return ['ok' => true];
    }
 
-   /** Árbol visible para el usuario (coincide con tu Repo y Controller: SIN namespace) */
    public function treeForUser(array $user): array
    {
       $tree = $this->repo->treeForUser($user);
@@ -147,10 +260,12 @@ final class MenuService
 
    private function norm(array $j, bool $isUpdate): array
    {
-      $parentId = array_key_exists('parent_id', $j) ? ($j['parent_id'] === null ? null : (int)$j['parent_id']) : null;
+      $parentId = array_key_exists('parent_id', $j)
+         ? ($j['parent_id'] === null ? null : (int)$j['parent_id'])
+         : null;
 
       $out = [
-         'parent_id'        => $isUpdate ? null : $parentId, // en update común no movemos jerarquía
+         'parent_id'        => $isUpdate ? null : $parentId,
          'etiqueta'         => $this->nullIfEmpty($j['etiqueta'] ?? ''),
          'icono'            => $this->nullIfEmpty($j['icono'] ?? null),
          'vista'            => $this->nullIfEmpty($j['vista'] ?? null),
@@ -168,7 +283,6 @@ final class MenuService
       if (!$isUpdate) {
          $out['orden'] = (int)($j['orden'] ?? 0);
       } else {
-         // limpia nulos “peligrosos” en update
          foreach ($out as $k => $v) {
             if ($v === null && !in_array($k, ['vista', 'url_externa', 'icono', 'requiere_permiso', 'badge_text', 'badge_variant', 'slug'], true)) {
                unset($out[$k]);
@@ -209,28 +323,27 @@ final class MenuService
             throw new InvalidArgumentException('Target inválido');
          }
       }
-      // header/divider: sin vista/url
    }
 
    private function detectCycle(array $changes): bool
    {
       $parent = [];
       foreach ($changes as $c) {
-         $id = (int)$c['id'];
+         $id  = (int)$c['id'];
          $pid = array_key_exists('parent_id', $c)
             ? ($c['parent_id'] === null ? null : (int)$c['parent_id'])
             : null;
          $parent[$id] = $pid;
       }
 
-      $vis = [];
+      $vis   = [];
       $stack = [];
-      $getp = fn(int $x) => $parent[$x] ?? null;
+      $getp  = fn(int $x) => $parent[$x] ?? null;
 
       $dfs = function (int $u) use (&$dfs, &$vis, &$stack, $getp): bool {
-         $vis[$u] = 1;
+         $vis[$u]   = 1;
          $stack[$u] = 1;
-         $v = $getp($u);
+         $v         = $getp($u);
          if ($v !== null) {
             if (!isset($vis[$v]) && $dfs($v)) return true;
             if (!empty($stack[$v])) return true;

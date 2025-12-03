@@ -5,61 +5,55 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Repositories\TareaRepository;
-use App\Support\DB;
-use PDO;
+use App\Repositories\UserRepository;
 use Exception;
 
 final class TareaTrabajoService
 {
    public function __construct(
-      private ?PDO $db = null,
-      private ?TareaRepository $repo = null
-   ) {
-      $this->db   = $this->db   ?: DB::pdo();
-      $this->repo = $this->repo ?: new TareaRepository($this->db);
+      private TareaRepository $repo = new TareaRepository(),
+      private UserRepository $userRepo = new UserRepository(),
+   ) {}
+
+   /**
+    * Enriquecer scope con user_id, area_id y team_user_ids.
+    */
+   private function enrichScope(array $scope, array $user): array
+   {
+      $scope2 = $scope;
+
+      if (empty($scope2['user_id']) && !empty($user['id'])) {
+         $scope2['user_id'] = (int)$user['id'];
+      }
+
+      if (empty($scope2['area_id']) && !empty($user['area_id'])) {
+         $scope2['area_id'] = (int)$user['area_id'];
+      }
+
+      $userId   = (int)($scope2['user_id'] ?? 0);
+      $viewTeam = !empty($scope2['view_team']);
+
+      if ($viewTeam && $userId > 0) {
+         // Método ya normalizado: findTeamUserIds(int $userId, bool $includeSelf = true)
+         $scope2['team_user_ids'] = $this->userRepo->findTeamUserIds($userId, true);
+      } else {
+         $scope2['team_user_ids'] = $scope2['team_user_ids'] ?? [];
+      }
+
+      return $scope2;
    }
 
    /**
-    * Lista tareas según filtros y alcance.
-    * Para auxiliares: fuerza responsable_id = user.id (Mis tareas).
+    * Listar "Mis tareas" (o por equipo/área/todas según scope).
     */
-   public function listar(array $q, array $user, array $scope): array
+   public function list(array $filters, array $user, array $scope): array
    {
       try {
-         $role = strtoupper((string)($user['role'] ?? ''));
-         $userId = (int)($user['id'] ?? 0);
+         $scope = $this->enrichScope($scope, $user);
 
-         $filtros = [];
-
-         // Filtros básicos desde query
-         foreach (
-            [
-               'estado',
-               'tipo_tarea',
-               'empresa_id',
-               'responsable_id',
-               'fec_obj_desde',
-               'fec_obj_hasta',
-               'fec_venc_desde',
-               'fec_venc_hasta'
-            ] as $k
-         ) {
-            if (!empty($q[$k])) {
-               $filtros[$k] = $q[$k];
-            }
-         }
-
-         $esAuxiliar = ($role === 'AUXILIAR');
-
-         // Mis tareas: si es AUXILIAR, siempre filtra por su id
-         if ($esAuxiliar && $userId > 0) {
-            $filtros['responsable_id'] = $userId;
-         }
-
-         // Para otros roles (supervisor/gerencia), permitimos filtrar por responsable_id
-         // pero podríamos aquí aplicar más reglas con $scope si lo necesitas más adelante.
-
-         $items = $this->repo->listar($filtros);
+         // Ya no forzamos filtros de área / responsable aquí,
+         // eso lo controla el scope en el repositorio.
+         $items = $this->repo->list($filters, $scope);
 
          return [
             'ok'   => true,
@@ -68,7 +62,7 @@ final class TareaTrabajoService
                'total' => count($items),
             ]
          ];
-      } catch (Exception $e) {
+      } catch (\Throwable $e) {
          return [
             'ok'    => false,
             'error' => [
@@ -79,39 +73,27 @@ final class TareaTrabajoService
       }
    }
 
-   /**
-    * Detalle de una tarea, respetando alcance.
-    */
    public function show(int $id, array $user, array $scope): array
    {
       try {
-         $role   = strtoupper((string)($user['role'] ?? ''));
-         $userId = (int)($user['id'] ?? 0);
+         $scope = $this->enrichScope($scope, $user);
 
-         $tarea = $this->repo->findById($id);
+         $tarea = $this->repo->findVisible($id, $scope);
          if (!$tarea) {
             return [
-               'ok'    => false,
-               'error' => ['code' => 'NOT_FOUND', 'message' => 'Tarea no encontrada']
+               'ok'   => false,
+               'error' => [
+                  'code'    => 'NOT_FOUND',
+                  'message' => 'Tarea no encontrada o fuera de alcance'
+               ]
             ];
          }
-
-         $esAuxiliar = ($role === 'AUXILIAR');
-
-         if ($esAuxiliar && $userId > 0 && (int)$tarea['responsable_id'] !== $userId) {
-            return [
-               'ok'    => false,
-               'error' => ['code' => 'FORBIDDEN', 'message' => 'No puedes ver esta tarea']
-            ];
-         }
-
-         // Para otros roles, podrías validar alcance adicional usando $scope.
 
          return [
             'ok'   => true,
             'data' => $tarea
          ];
-      } catch (Exception $e) {
+      } catch (\Throwable $e) {
          return [
             'ok'    => false,
             'error' => [
@@ -123,44 +105,41 @@ final class TareaTrabajoService
    }
 
    /**
-    * Cambia el estado de una tarea desde "Mis tareas".
-    * Auxiliares: solo pueden PENDIENTE <-> EN_REVISION sobre sus propias tareas.
+    * Cambiar estado de una tarea (PENDIENTE <-> EN_REVISION).
+    * Solo el responsable puede hacerlo, independientemente del scope de lectura.
     */
-   public function cambiarEstado(
+   public function changeStatus(
       int $id,
-      string $nuevoEstado,
+      string $newStatus,
       array $user,
       array $scope,
       ?string $obs
    ): array {
       try {
-         $role   = strtoupper((string)($user['role'] ?? ''));
-         $userId = (int)($user['id'] ?? 0);
-         $nuevoEstado = strtoupper(trim($nuevoEstado));
+         $scope  = $this->enrichScope($scope, $user);
+         $userId = (int)($scope['user_id'] ?? ($user['id'] ?? 0));
 
          $tarea = $this->repo->findById($id);
          if (!$tarea) {
             return [
-               'ok'    => false,
+               'ok'   => false,
                'error' => ['code' => 'NOT_FOUND', 'message' => 'Tarea no encontrada']
             ];
          }
 
-         $esAuxiliar = ($role === 'AUXILIAR');
-
-         if ($esAuxiliar && $userId > 0 && (int)$tarea['responsable_id'] !== $userId) {
+         // Solo el responsable puede cambiar estado, aunque tenga view_all
+         if ($userId <= 0 || (int)$tarea['responsable_id'] !== $userId) {
             return [
-               'ok'    => false,
+               'ok'   => false,
                'error' => ['code' => 'FORBIDDEN', 'message' => 'No puedes modificar esta tarea']
             ];
          }
 
-         $estadoActual = strtoupper((string)$tarea['estado']);
-         $tieneEvidencia = (int)($tarea['tiene_evidencia'] ?? 0);
+         $currentStatus = strtoupper((string)$tarea['estado']);
+         $newStatus     = strtoupper(trim($newStatus));
+         $hasEvidence   = (int)($tarea['tiene_evidencia'] ?? 0);
 
-         // ❗ Regla de negocio firme:
-         // No se puede pasar a EN_REVISION si no tiene evidencias
-         if ($nuevoEstado === 'EN_REVISION' && $tieneEvidencia === 0) {
+         if ($newStatus === 'EN_REVISION' && $hasEvidence === 0) {
             return [
                'ok'    => false,
                'error' => [
@@ -170,30 +149,27 @@ final class TareaTrabajoService
             ];
          }
 
-         // Reglas de transición para auxiliares
-         if ($esAuxiliar) {
-            $permitidas = [
-               'PENDIENTE'   => ['EN_REVISION'],
-               'EN_REVISION' => ['PENDIENTE'],
+         if ($newStatus === 'EN_REVISION' && $currentStatus !== 'PENDIENTE') {
+            return [
+               'ok' => false,
+               'error' => [
+                  'code'    => 'INVALID_TRANSITION',
+                  'message' => 'Solo puedes enviar a revisión tareas pendientes'
+               ]
             ];
-
-            if (
-               !isset($permitidas[$estadoActual]) ||
-               !in_array($nuevoEstado, $permitidas[$estadoActual], true)
-            ) {
-               return [
-                  'ok'    => false,
-                  'error' => [
-                     'code'    => 'INVALID_TRANSITION',
-                     'message' => "No puedes cambiar de {$estadoActual} a {$nuevoEstado}"
-                  ]
-               ];
-            }
-         } else {
-            // Para otros roles, más adelante definiremos reglas del módulo de seguimiento.
          }
 
-         $ok = $this->repo->cambiarEstado($id, $nuevoEstado, $obs);
+         if ($newStatus === 'PENDIENTE' && $currentStatus !== 'EN_REVISION') {
+            return [
+               'ok' => false,
+               'error' => [
+                  'code'    => 'INVALID_TRANSITION',
+                  'message' => 'Solo puedes reabrir tareas en revisión'
+               ]
+            ];
+         }
+
+         $ok = $this->repo->changeStatus($id, $newStatus, $obs);
 
          if (!$ok) {
             return [

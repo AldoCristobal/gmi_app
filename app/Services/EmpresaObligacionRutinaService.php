@@ -34,9 +34,8 @@ final class EmpresaObligacionRutinaService
             ];
          }
 
-         // Aquí podrías aplicar validación de scope si lo necesitas
-
-         $obligaciones = $this->eoRepo->listarPorEmpresaConObligacion($empresaId);
+         // Lista usando nombre global del repo
+         $obligaciones = $this->eoRepo->listWithObligacionByEmpresa($empresaId);
 
          return [
             'ok'   => true,
@@ -89,8 +88,10 @@ final class EmpresaObligacionRutinaService
             ];
          }
 
-         $eo = $this->eoRepo->buscarEmpresaObligacion($empresaId, $obligacionId);
+         // Usar nombre alineado:
+         $eo = $this->eoRepo->findByEmpresaAndObligacion($empresaId, $obligacionId);
 
+         // Si la obligación no tiene rutina configurada
          if (!$eo) {
             return [
                'ok'   => true,
@@ -115,6 +116,7 @@ final class EmpresaObligacionRutinaService
             ];
          }
 
+         // Ya existe configuración
          return [
             'ok'   => true,
             'data' => [
@@ -194,10 +196,12 @@ final class EmpresaObligacionRutinaService
             ];
          }
 
-         $existente = $this->eoRepo->buscarEmpresaObligacion($empresaId, $obligacionId);
+         // Buscar con nombre global
+         $existente = $this->eoRepo->findByEmpresaAndObligacion($empresaId, $obligacionId);
 
          if ($existente) {
-            $this->eoRepo->actualizarRutina((int)$existente['id'], [
+            // Actualizar con método global
+            $this->eoRepo->updateRutinaById((int)$existente['id'], [
                'dia_vencimiento'   => $diaVenc,
                'dias_anticipacion' => $diasAnt,
                'offset_dias'       => $offsetDias,
@@ -212,7 +216,8 @@ final class EmpresaObligacionRutinaService
             return ['ok' => true];
          }
 
-         $this->eoRepo->crearRutina([
+         // Crear nueva configuración usando createRutina()
+         $this->eoRepo->createRutina([
             'empresa_id'        => $empresaId,
             'obligacion_id'     => $obligacionId,
             'periodicidad'      => $periodicidad ?: 'MENSUAL',

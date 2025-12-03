@@ -11,12 +11,118 @@ final class RoleService
 {
    public function __construct(private RoleRepository $repo = new RoleRepository()) {}
 
+   /**
+    * NUEVO ESTÁNDAR:
+    * Lista roles usando filtros.
+    * Soporta:
+    *  - q: string (búsqueda por nombre/slug)
+    *
+    * Devuelve SOLO el arreglo de roles (sin envoltura ok/data).
+    */
+   public function list(array $filters = []): array
+   {
+      $q = '';
+      if (isset($filters['q'])) {
+         $q = (string)$filters['q'];
+      }
+
+      $res = $this->listar($q);
+      return $res['data'] ?? [];
+   }
+
+   /**
+    * NUEVO ESTÁNDAR:
+    * Obtiene un rol por ID.
+    * Lanza RuntimeException si no existe.
+    */
+   public function get(int $id): array
+   {
+      if ($id <= 0) {
+         throw new \InvalidArgumentException('id inválido');
+      }
+
+      $row = $this->repo->findById($id);
+      if (!$row) {
+         throw new \RuntimeException('Rol no encontrado');
+      }
+
+      return $row;
+   }
+
+   /**
+    * NUEVO ESTÁNDAR:
+    * Crea un rol y devuelve su ID.
+    * Usa la lógica existente de crear() y, si hay error, lanza RuntimeException.
+    */
+   public function create(array $in): int
+   {
+      $res = $this->crear($in);
+
+      if (!($res['ok'] ?? false)) {
+         $msg = $res['msg'] ?? 'Error al crear rol';
+         throw new \RuntimeException($msg);
+      }
+
+      return (int)($res['data']['id'] ?? 0);
+   }
+
+   /**
+    * NUEVO ESTÁNDAR:
+    * Actualiza un rol, devuelve true si se actualizó, false si no existe.
+    * Si hay error de validación/servidor, lanza RuntimeException.
+    */
+   public function update(int $id, array $in): bool
+   {
+      $res = $this->actualizar($id, $in);
+
+      if (!($res['ok'] ?? false)) {
+         $code = $res['code'] ?? '';
+         if ($code === 'NOT_FOUND') {
+            return false;
+         }
+         $msg = $res['msg'] ?? 'Error al actualizar rol';
+         throw new \RuntimeException($msg);
+      }
+
+      return true;
+   }
+
+   /**
+    * NUEVO ESTÁNDAR:
+    * Elimina un rol, devuelve true si se eliminó, false si no existía.
+    * Si hay error de validación/servidor, lanza RuntimeException.
+    */
+   public function delete(int $id): bool
+   {
+      $res = $this->eliminar($id);
+
+      if (!($res['ok'] ?? false)) {
+         $code = $res['code'] ?? '';
+         if ($code === 'NOT_FOUND') {
+            return false;
+         }
+         $msg = $res['msg'] ?? 'Error al eliminar rol';
+         throw new \RuntimeException($msg);
+      }
+
+      return true;
+   }
+
+   /**
+    * MÉTODO LEGACY ACTUAL:
+    * Mantiene la firma y comportamiento existente.
+    * DEVUELVE envoltura ['ok' => bool, 'data' => [...]].
+    */
    public function listar(string $q = ''): array
    {
       $data = $this->repo->findAll(trim($q));
       return ['ok' => true, 'data' => $data];
    }
 
+   /**
+    * MÉTODO LEGACY ACTUAL:
+    * Crea un rol y devuelve envoltura ['ok' => bool, 'data' => ['id' => int]].
+    */
    public function crear(array $in): array
    {
       $nombre = trim((string)($in['nombre'] ?? ''));
@@ -53,6 +159,10 @@ final class RoleService
       }
    }
 
+   /**
+    * MÉTODO LEGACY ACTUAL:
+    * Actualiza un rol y devuelve envoltura ['ok' => bool, ...].
+    */
    public function actualizar(int $id, array $in): array
    {
       if ($id <= 0) return ['ok' => false, 'code' => 'VALIDATION', 'msg' => 'id inválido'];
@@ -98,6 +208,10 @@ final class RoleService
       }
    }
 
+   /**
+    * MÉTODO LEGACY ACTUAL:
+    * Elimina un rol, devuelve envoltura ['ok' => bool, ...].
+    */
    public function eliminar(int $id): array
    {
       if ($id <= 0) return ['ok' => false, 'code' => 'VALIDATION', 'msg' => 'id inválido'];

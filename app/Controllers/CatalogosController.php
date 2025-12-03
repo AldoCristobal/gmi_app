@@ -6,21 +6,59 @@ namespace App\Controllers;
 
 use PDO;
 use App\Support\DB;
+use App\Http\Request;
 use App\Http\Response;
+use App\Services\EmpresaService;
+use App\Repositories\UserRepository;
 
 final class CatalogosController
 {
+   public function __construct(
+      private UserRepository $userRepo = new UserRepository(),
+      private EmpresaService $empresaService = new EmpresaService(),
+   ) {}
+
+   private function enrichScope(array $scope, array $user): array
+   {
+      $scope2 = $scope;
+
+      if (empty($scope2['user_id']) && !empty($user['id'])) {
+         $scope2['user_id'] = (int)$user['id'];
+      }
+
+      if (empty($scope2['area_id']) && !empty($user['area_id'])) {
+         $scope2['area_id'] = (int)$user['area_id'];
+      }
+
+      $userId   = (int)($scope2['user_id'] ?? 0);
+      $viewTeam = !empty($scope2['view_team']);
+
+      if ($viewTeam && $userId > 0) {
+         // mismo método que usas en TareaTrabajoService / TareaExtraService
+         $scope2['team_user_ids'] = $this->userRepo->findTeamUserIds($userId, true);
+      } else {
+         $scope2['team_user_ids'] = $scope2['team_user_ids'] ?? [];
+      }
+
+      return $scope2;
+   }
+
    public function areas(): void
    {
       $st = DB::pdo()->query("SELECT id, nombre FROM area WHERE activo=1 ORDER BY nombre");
       Response::json(['ok' => true, 'data' => $st->fetchAll(PDO::FETCH_ASSOC)]);
    }
-   public function jefes(): void
+
+   public function jefes(Request $req): void
    {
-      // todos los usuarios activos para seleccionar como jefe (ajusta si tienes columna es_jefe)
-      $st = DB::pdo()->query("SELECT id, nombre FROM usuario WHERE activo=1 ORDER BY nombre");
-      Response::json(['ok' => true, 'data' => $st->fetchAll(PDO::FETCH_ASSOC)]);
+      $scope = $req->attr('scope') ?? [];
+      $q     = $req->get ?? [];
+
+      $rows = $this->empresaService->catalogoJefesDesdeEmpresas($q, $scope);
+
+      Response::json(['ok' => true, 'data' => $rows]);
    }
+
    public function roles(): void
    {
       $st = DB::pdo()->query("SELECT id, nombre FROM rol WHERE activo=1 ORDER BY nombre");
@@ -112,84 +150,14 @@ final class CatalogosController
       }
    }
 
-   public function empresas(\App\Http\Request $req): void
+   public function empresas(Request $req): void
    {
-      try {
-         $pdo = \App\Support\DB::pdo();
+      $scope = $req->attr('scope') ?? [];
+      $q     = $req->get ?? [];
 
-         // 1) Datos que (idealmente) pone el middleware
-         $scope = $req->attr('scope') ?? [];
-         $user  = $req->attr('user')  ?? [];
+      // Delegamos al servicio que ya sabe usar scopeWhere()
+      $rows = $this->empresaService->catalogoEmpresas($q, $scope);
 
-         // 2) ¿Es Dirección?
-         $esDireccion = !empty($scope['direccion']) || (isset($user['role']) && $user['role'] === 'direccion');
-
-         // 3) Determinar area_id “efectivo”
-         $areaEfectiva = 0;
-
-         if ($esDireccion) {
-            // Dirección ve todas, no forzamos área
-            $areaEfectiva = 0;
-         } else {
-            // Primero intenta con scope / user
-            $areaEfectiva = (int)($scope['area_id'] ?? $user['area_id'] ?? 0);
-
-            // Fallback: si sigue en 0, lo leemos de BD por el user actual
-            if ($areaEfectiva <= 0 && isset($user['id'])) {
-               $stA = $pdo->prepare("SELECT area_id FROM usuario WHERE id = :id LIMIT 1");
-               $stA->execute([':id' => (int)$user['id']]);
-               $areaEfectiva = (int)($stA->fetchColumn() ?: 0);
-            }
-
-            // Si aún no tenemos área, por seguridad devolvemos lista vacía
-            if ($areaEfectiva <= 0) {
-               \App\Http\Response::json(['ok' => true, 'data' => []], 200);
-               return;
-            }
-         }
-
-         // 4) Filtros opcionales
-         $q                = trim((string)($req->get['q'] ?? ''));
-         $incluyeInactivos = (string)($req->get['inactivos'] ?? '') === '1';
-
-         // 5) WHERE dinámico
-         $where  = $incluyeInactivos ? '1=1' : 'e.activo = 1';
-         $params = [];
-
-         if (!$esDireccion) {
-            $where .= ' AND e.area_id = :a';
-            $params[':a'] = $areaEfectiva;
-         }
-         if ($q !== '') {
-            $where .= ' AND e.nombre LIKE :q';
-            $params[':q'] = '%' . $q . '%';
-         }
-
-         // 6) Consulta
-         $sql = "
-         SELECT e.id, e.nombre, e.area_id
-         FROM empresa e
-         WHERE {$where}
-         ORDER BY e.nombre ASC
-      ";
-         $st = $pdo->prepare($sql);
-         $st->execute($params);
-         $rows = $st->fetchAll(\PDO::FETCH_ASSOC) ?: [];
-
-         foreach ($rows as &$r) {
-            $r['id'] = (int)$r['id'];
-            if (isset($r['area_id'])) $r['area_id'] = (int)$r['area_id'];
-         }
-
-         \App\Http\Response::json(['ok' => true, 'data' => $rows], 200);
-      } catch (\Throwable $e) {
-         // Si quieres ver qué `scope` y `user` llegan realmente, descomenta:
-         // error_log('empresas scope='.json_encode($req->attr('scope')).' user='.json_encode($req->attr('user')));
-
-         \App\Http\Response::json(
-            ['ok' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'No se pudo obtener empresas']],
-            500
-         );
-      }
+      Response::json(['ok' => true, 'data' => $rows]);
    }
 }

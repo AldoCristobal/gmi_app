@@ -29,7 +29,7 @@ final class TareaDocumentoController
          return;
       }
 
-      $out = $this->svc->listar($tareaId, $user, $scope);
+      $out = $this->svc->list($tareaId, $user, $scope);
       Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
    }
 
@@ -57,7 +57,7 @@ final class TareaDocumentoController
          return;
       }
 
-      $out = $this->svc->subir($tareaId, $user, $scope, $files);
+      $out = $this->svc->upload($tareaId, $user, $scope, $files);
       Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
    }
 
@@ -99,7 +99,7 @@ final class TareaDocumentoController
          return;
       }
 
-      $out = $this->svc->eliminar($id, $user, $scope);
+      $out = $this->svc->delete($id, $user, $scope);
       Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
    }
 }

@@ -41,8 +41,8 @@ final class EmpresaObligacionRutinaController
     */
    public function show(Request $req): void
    {
-      $scope       = $req->attr('scope') ?? [];
-      $empresaId   = (int)($req->get['empresa_id'] ?? 0);
+      $scope        = $req->attr('scope') ?? [];
+      $empresaId    = (int)($req->get['empresa_id'] ?? 0);
       $obligacionId = (int)($req->get['obligacion_id'] ?? 0);
 
       if ($empresaId <= 0 || $obligacionId <= 0) {
@@ -90,7 +90,6 @@ final class EmpresaObligacionRutinaController
 
       Response::json($out, ($out['ok'] ?? false) ? 200 : 422);
    }
-
 
    private function json(Request $r): array
    {

@@ -15,7 +15,13 @@ final class AuthService
    {
       $user = $this->repo->findByEmail($email);
       if (!$user || !password_verify($password, $user['pass_hash'])) {
-         return ['ok' => false, 'error' => ['code' => 'BAD_CREDENTIALS', 'message' => 'Usuario/contraseña incorrectos']];
+         return [
+            'ok'    => false,
+            'error' => [
+               'code'    => 'BAD_CREDENTIALS',
+               'message' => 'Usuario/contraseña incorrectos'
+            ]
+         ];
       }
 
       $roles = $this->repo->rolesOfUser((int)$user['id']);
@@ -33,14 +39,25 @@ final class AuthService
          'permisos'  => $perms,
       ];
 
-      // CSRF token
       $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
-      return ['ok' => true, 'data' => [
-         'user' => $_SESSION['user'],
-         'csrf_token' => $_SESSION['csrf_token'],
-      ]];
+      // NUEVO: determinar ruta de inicio según rol.home_menu_id
+      $homeVista = $this->repo->findHomeMenuVistaByUserId((int)$user['id']);
+      // Ajusta el fallback a la vista que hoy muestras por defecto
+      $homePath = $homeVista
+         ? '/' . ltrim($homeVista, '/')
+         : '/admin/usuarios'; // <-- cámbialo si tu home actual es otro
+
+      return [
+         'ok'   => true,
+         'data' => [
+            'user'       => $_SESSION['user'],
+            'csrf_token' => $_SESSION['csrf_token'],
+            'home_path'  => $homePath,
+         ]
+      ];
    }
+
 
    public function logout(): void
    {

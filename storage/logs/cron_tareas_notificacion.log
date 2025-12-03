@@ -22,3 +22,40 @@ Fallidas: 0
 {"notificacion_id":8,"status":"enviada","to":"crataldo@gmail.com"}
 {"notificacion_id":9,"status":"enviada","to":"deathdrag26@gmail.com"}
 [2025-11-17 15-12] Job cron_tareas_notificacion finalizado.
+[2025-11-25 11-55] Iniciando job de cron_tareas_notificacion...
+=== CRON NOTIFICACIONES DE TAREAS ===
+Fecha: 2025-11-25 11:55:20
+Total pendientes: 4
+Enviadas: 4
+Omitidas: 0
+Fallidas: 0
+
+--- DETALLES ---
+{"notificacion_id":11,"status":"enviada","to":"auxiliarf2@gmi.local"}
+{"notificacion_id":12,"status":"enviada","to":"auxiliarf2@gmi.local"}
+{"notificacion_id":13,"status":"enviada","to":"auxiliarf@gmi.local"}
+{"notificacion_id":14,"status":"enviada","to":"auxiliarf@gmi.local"}
+[2025-11-25 11-55] Job cron_tareas_notificacion finalizado.
+[2025-11-25 11-56] Iniciando job de cron_tareas_notificacion...
+=== CRON NOTIFICACIONES DE TAREAS ===
+Fecha: 2025-11-25 11:56:44
+Total pendientes: 0
+Enviadas: 0
+Omitidas: 0
+Fallidas: 0
+
+[2025-11-25 11-56] Job cron_tareas_notificacion finalizado.
+[2025-11-25 11-57] Iniciando job de cron_tareas_notificacion...
+=== CRON NOTIFICACIONES DE TAREAS ===
+Fecha: 2025-11-25 11:57:50
+Total pendientes: 4
+Enviadas: 4
+Omitidas: 0
+Fallidas: 0
+
+--- DETALLES ---
+{"notificacion_id":15,"status":"enviada","to":"deathdrag26@gmail.com"}
+{"notificacion_id":16,"status":"enviada","to":"deathdrag26@gmail.com"}
+{"notificacion_id":17,"status":"enviada","to":"crataldo@gmail.com"}
+{"notificacion_id":18,"status":"enviada","to":"crataldo@gmail.com"}
+[2025-11-25 11-57] Job cron_tareas_notificacion finalizado.

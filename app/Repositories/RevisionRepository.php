@@ -10,71 +10,91 @@ use App\Support\DB;
 final class RevisionRepository
 {
    private PDO $db;
-   public function __construct()
+
+   public function __construct(?PDO $db = null)
    {
-      $this->db = DB::pdo();
+      $this->db = $db ?? DB::pdo();
    }
 
-   /** WHERE + params según scope (direccion/gerencia/jefe+equipo/auxiliar) */
+   /**
+    * WHERE + params según scope.
+    *
+    * Nuevo esquema:
+    *   - view_all  => ve todo
+    *   - view_area => por área
+    *   - view_team => por equipo (ids en scope.team_user_ids)
+    *   - view_mine => lo suyo
+    *
+    * Fallback legacy para módulos no migrados:
+    *   - direccion / gerencia / auxiliar / aux_only
+    */
    private function scopeWhere(array $scope, array &$params): string
    {
-      // Dirección: sin restricción
-      if (!empty($scope['direccion'])) {
-         return '1=1';
+      $userId = isset($scope['user_id']) ? (int)$scope['user_id'] : 0;
+      $areaId = isset($scope['area_id']) ? (int)$scope['area_id'] : 0;
+
+      // ----- Nuevo mundo: view_* -----
+      $viewAll  = $scope['view_all']  ?? null;
+      $viewArea = $scope['view_area'] ?? null;
+      $viewTeam = $scope['view_team'] ?? null;
+      $viewMine = $scope['view_mine'] ?? null;
+
+      $teamUserIds = $scope['team_user_ids'] ?? null;
+      if (!is_array($teamUserIds)) {
+         $teamUserIds = [];
       }
 
-      // Gerencia: por área
-      if (!empty($scope['gerencia'])) {
-         $params[':area_id'] = (int)($scope['area_id'] ?? 0);
-         return 'r.area_id = :area_id';
-      }
+      $hasNewScopes = !is_null($viewAll) || !is_null($viewArea) || !is_null($viewTeam) || !is_null($viewMine);
 
-      // Operativo (auxiliar o jefe/supervisor)
-      $userId  = isset($scope['user_id']) ? (int)$scope['user_id'] : 0;
-      $areaId  = isset($scope['area_id']) ? (int)$scope['area_id'] : 0;
-      $auxOnly = !empty($scope['auxiliar']); // si viene marcado explícitamente “auxiliar”
-
-      if ($userId > 0) {
-         // Buscar subordinados directos (equipo)
-         $subIds = [];
-         try {
-            $st = $this->db->prepare("SELECT id FROM usuario WHERE activo=1 AND jefe_id=:uid");
-            $st->execute([':uid' => $userId]);
-            $subIds = array_map('intval', $st->fetchAll(\PDO::FETCH_COLUMN) ?: []);
-         } catch (\Throwable $e) {
-            $subIds = [];
+      if ($hasNewScopes) {
+         // Dirección / scope.all => ve todo
+         if (!empty($viewAll)) {
+            return '1=1';
          }
 
-         if (!empty($subIds) && !$auxOnly) {
-            // Jefe/supervisor: responsable_id IN (yo + equipo)
-            $all = array_merge([$userId], $subIds);
-            $in  = [];
-            foreach ($all as $i => $uid) {
-               $ph = ":uid{$i}";
-               $in[] = $ph;
-               $params[$ph] = $uid;
+         $ors = [];
+
+         // Área
+         if (!empty($viewArea) && $areaId > 0) {
+            $ors[] = 'r.area_id = :sc_area_id';
+            $params[':sc_area_id'] = $areaId;
+         }
+
+         // Equipo (ids ya calculados en el Service)
+         if (!empty($viewTeam) && !empty($teamUserIds)) {
+            $phs = [];
+            foreach ($teamUserIds as $idx => $uid) {
+               $ph = ':sc_team_' . $idx;
+               $phs[] = $ph;
+               $params[$ph] = (int)$uid;
             }
-            return 'r.responsable_id IN (' . implode(',', $in) . ')';
+            if ($phs) {
+               $ors[] = 'r.responsable_id IN (' . implode(',', $phs) . ')';
+            }
          }
 
-         // Si está marcado como auxiliar -> solo lo suyo
-         if ($auxOnly) {
-            $params[':uid'] = $userId;
-            return 'r.responsable_id = :uid';
+         // Mías
+         if (!empty($viewMine) && $userId > 0) {
+            $ors[] = 'r.responsable_id = :sc_user_id';
+            $params[':sc_user_id'] = $userId;
          }
 
-         // Sin equipo: si hay area_id en scope, filtramos por área; si no, solo lo suyo
-         if ($areaId > 0) {
-            $params[':area_id'] = $areaId;
-            return 'r.area_id = :area_id';
+         if (!empty($ors)) {
+            return '(' . implode(' OR ', $ors) . ')';
          }
 
-         $params[':uid'] = $userId;
-         return 'r.responsable_id = :uid';
+         // Fallback de seguridad: si algo quedó raro pero hay userId, al menos “mías”
+         if ($userId > 0) {
+            $params[':sc_user_id'] = $userId;
+            return 'r.responsable_id = :sc_user_id';
+         }
+
+         // Nadita visible
+         return '0=1';
       }
 
       // Fallback seguro: nada
-      return '1=0';
+      return '0=1';
    }
 
    /** Listado con filtros + paginación (JOINs + semáforo condicionado) */
@@ -183,7 +203,9 @@ final class RevisionRepository
          LIMIT :lim OFFSET :off
       ";
       $std = $this->db->prepare($sql);
-      foreach ($params as $k => $v) $std->bindValue($k, $v);
+      foreach ($params as $k => $v) {
+         $std->bindValue($k, $v);
+      }
       $std->bindValue(':lim', $size, PDO::PARAM_INT);
       $std->bindValue(':off', $offset, PDO::PARAM_INT);
       $std->execute();
@@ -350,9 +372,9 @@ final class RevisionRepository
         FROM revision_documento rd
         WHERE rd.id = :doc_id AND rd.revision_id = :rev_id
         LIMIT 1
-    ");
+      ");
       $st->execute([':doc_id' => $docId, ':rev_id' => $revisionId]);
-      $r = $st->fetch(\PDO::FETCH_ASSOC);
+      $r = $st->fetch(PDO::FETCH_ASSOC);
       return $r ?: null;
    }
 
@@ -386,9 +408,11 @@ final class RevisionRepository
 
    public function nextDocVersion(int $revisionId): int
    {
-      $st = $this->db->prepare("SELECT COALESCE(MAX(version), 0) + 1 AS nv
-                              FROM revision_documento
-                              WHERE revision_id = :rid");
+      $st = $this->db->prepare("
+         SELECT COALESCE(MAX(version), 0) + 1 AS nv
+         FROM revision_documento
+         WHERE revision_id = :rid
+      ");
       $st->execute([':rid' => $revisionId]);
       return (int)$st->fetchColumn();
    }

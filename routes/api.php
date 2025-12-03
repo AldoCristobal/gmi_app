@@ -1,22 +1,23 @@
 <?php
 
-
 use App\Controllers\AuthController;
 use App\Controllers\MenuController;
 use App\Controllers\RoleController;
 use App\Controllers\UserController;
 use App\Controllers\EmpresaController;
+use App\Controllers\MenuRolController;
 use App\Controllers\PermisoController;
 use App\Controllers\RevisionController;
 use App\Controllers\CatalogosController;
 use App\Http\Middlewares\AuthMiddleware;
 use App\Http\Middlewares\CsrfMiddleware;
 use App\Http\Middlewares\RbacMiddleware;
+use App\Controllers\TareaExtraController;
 use App\Controllers\UploadTempController;
 use App\Http\Middlewares\ScopeMiddleware;
-
 use App\Controllers\TareaTrabajoController;
 use App\Controllers\TareaDocumentoController;
+use App\Controllers\TareaEvaluacionController;
 use App\Controllers\EmpresaObligacionController;
 use App\Controllers\RevisionDocumentoController;
 use App\Controllers\EmpresaObligacionRutinaController;
@@ -35,6 +36,9 @@ $uplTmp = new UploadTempController();
 $empRut = new EmpresaObligacionRutinaController();
 $tareaTrab = new TareaTrabajoController();
 $tDoc = new TareaDocumentoController();
+$menuRol = new MenuRolController();
+$tareaExtra = new TareaExtraController();
+$tev = new TareaEvaluacionController();
 
 // Login (NO Auth, NO CSRF)
 $router->post('/api/login', [$auth, 'login']);
@@ -47,13 +51,31 @@ $router->get('/api/csrf', [$auth, 'csrf']);
 
 
 //CATALGOS
-$router->get('/api/v1/catalogos/areas', [new AuthMiddleware(), [$cat, 'areas']]);
-$router->get('/api/v1/catalogos/jefes', [new AuthMiddleware(), [$cat, 'jefes']]);
-$router->get('/api/v1/catalogos/roles', [new AuthMiddleware(), [$cat, 'roles']]);
-$router->get('/api/v1/catalogos/empresas', [new AuthMiddleware(), [$cat, 'empresas']]);
+$router->get('/api/v1/catalogos/areas', [
+   new AuthMiddleware(),
+   [$cat, 'areas'],
+]);
+
+$router->get('/api/v1/catalogos/jefes', [
+   new AuthMiddleware(),
+   new ScopeMiddleware(),   // <- para que se llene $req->attr('scope')
+   [$cat, 'jefes'],
+]);
+
+$router->get('/api/v1/catalogos/roles', [
+   new AuthMiddleware(),
+   [$cat, 'roles'],
+]);
+
+$router->get('/api/v1/catalogos/empresas', [
+   new AuthMiddleware(),
+   new ScopeMiddleware(),   // <- igual aquí
+   [$cat, 'empresas'],
+]);
 
 $router->get('/api/v1/auth/whoami', [
    new AuthMiddleware(),
+   //new ScopeMiddleware(),
    [new \App\Controllers\AuthController(), 'whoami']
 ]);
 
@@ -330,6 +352,15 @@ $router->get('/api/v1/catalogos/empresa_documento_tipos', [
    [$cat, 'empresaDocumentoTipos']
 ]);
 
+// Panel de expediente (solo consulta)
+$router->get('/api/v1/empresas/expediente-panel', [
+   new \App\Http\Middlewares\AuthMiddleware(),
+   new \App\Http\Middlewares\RbacMiddleware(['empresa.expediente']),
+   new \App\Http\Middlewares\ScopeMiddleware(),
+   [$emp, 'expedientePanelList'],
+]);
+
+
 // ===== CATALOGO OBLIGACIONES =====
 // Catálogo de obligaciones
 $router->get('/api/v1/catalogos/obligaciones', [
@@ -562,4 +593,86 @@ $router->delete('/api/v1/tareas/documentos', [
    new RbacMiddleware(['tareas.evidencias.borrar']),
    new ScopeMiddleware(),
    [$tDoc, 'delete']
+]);
+
+// GET: Árbol de menú para un rol
+$router->get('/api/v1/admin/menu-rol/tree', [
+   new AuthMiddleware(),
+   // permiso que quieras usar para este módulo:
+   new RbacMiddleware(['admin.menu.asignar']),
+   // si quieres limitar por scope (opcional):
+   // new ScopeMiddleware(),
+   [$menuRol, 'tree'],
+]);
+
+// POST: Guardar menú del rol
+$router->post('/api/v1/admin/menu-rol/save', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['admin.menu.asignar']),
+   // new ScopeMiddleware(), // opcional también aquí
+   [$menuRol, 'save'],
+]);
+
+/** ===================== TAREAS EXTRAORDINARIAS ===================== **/
+
+$router->get('/api/v1/tareas/extra', [
+   new AuthMiddleware(),
+   new RbacMiddleware(['tareas.extra.ver']),
+   new ScopeMiddleware(),                 // <--- IMPORTANTE
+   [$tareaExtra, 'index'],
+]);
+
+$router->post('/api/v1/tareas/extra', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['tareas.extra.crear']),
+   new ScopeMiddleware(),                 // <--- IMPORTANTE
+   [$tareaExtra, 'store'],
+]);
+
+$router->put('/api/v1/tareas/extra', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['tareas.extra.editar']),
+   new ScopeMiddleware(),                 // <--- IMPORTANTE
+   [$tareaExtra, 'update'],
+]);
+
+$router->delete('/api/v1/tareas/extra', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new RbacMiddleware(['tareas.extra.borrar']),
+   new ScopeMiddleware(),                 // <--- IMPORTANTE
+   [$tareaExtra, 'destroy'],
+]);
+
+// TAREAS - EVALUACIÓN
+$router->get('/api/v1/tareas/evaluacion', [
+   new AuthMiddleware(),
+   new ScopeMiddleware(),
+   new RbacMiddleware(['tareas.evaluacion.ver']),
+   [$tev, 'index'],
+]);
+
+$router->get('/api/v1/tareas/evaluacion/show', [
+   new AuthMiddleware(),
+   new ScopeMiddleware(),
+   new RbacMiddleware(['tareas.evaluacion.ver']),
+   [$tev, 'show'],
+]);
+
+$router->post('/api/v1/tareas/evaluacion', [
+   new AuthMiddleware(),
+   new CsrfMiddleware(),
+   new ScopeMiddleware(),
+   new RbacMiddleware(['tareas.evaluacion.evaluar']),
+   [$tev, 'store'],
+]);
+
+$router->get('/api/v1/tareas/evaluacion/historial', [
+   new AuthMiddleware(),
+   new ScopeMiddleware(),
+   new RbacMiddleware(['tareas.evaluacion.ver']),
+   [$tev, 'history'],
 ]);

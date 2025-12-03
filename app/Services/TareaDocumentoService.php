@@ -15,14 +15,7 @@ final class TareaDocumentoService
       private TareaDocumentoRepository $dRepo = new TareaDocumentoRepository()
    ) {}
 
-   /**
-    * Listar documentos de una tarea
-    *
-    * @param array<string,mixed> $user
-    * @param array<string,mixed> $scope
-    * @return array<string,mixed>
-    */
-   public function listar(int $tareaId, array $user, array $scope): array
+   public function list(int $tareaId, array $user, array $scope): array
    {
       $tarea = $this->tRepo->findById($tareaId);
       if (!$tarea) {
@@ -32,7 +25,7 @@ final class TareaDocumentoService
          ];
       }
 
-      if (!$this->puedeVer($tarea, $user, $scope)) {
+      if (!$this->canView($tarea, $user, $scope)) {
          return [
             'ok' => false,
             'error' => ['code' => 'FORBIDDEN', 'message' => 'No puedes ver esta tarea']
@@ -47,15 +40,7 @@ final class TareaDocumentoService
       ];
    }
 
-   /**
-    * Subir uno o varios archivos de evidencia
-    *
-    * @param array<string,mixed> $user
-    * @param array<string,mixed> $scope
-    * @param array<string,mixed> $files  $_FILES['files'] (multiple)
-    * @return array<string,mixed>
-    */
-   public function subir(int $tareaId, array $user, array $scope, array $files): array
+   public function upload(int $tareaId, array $user, array $scope, array $files): array
    {
       $tarea = $this->tRepo->findById($tareaId);
       if (!$tarea) {
@@ -65,14 +50,13 @@ final class TareaDocumentoService
          ];
       }
 
-      if (!$this->puedeSubir($tarea, $user, $scope)) {
+      if (!$this->canUpload($tarea, $user, $scope)) {
          return [
             'ok' => false,
             'error' => ['code' => 'FORBIDDEN', 'message' => 'No puedes subir evidencias a esta tarea']
          ];
       }
 
-      // Solo permitimos subir en estado PENDIENTE
       $estado = strtoupper((string)$tarea['estado']);
       if ($estado !== 'PENDIENTE') {
          return [
@@ -84,7 +68,7 @@ final class TareaDocumentoService
          ];
       }
 
-      $root = dirname(__DIR__, 2); // /app/Services -> raíz del proyecto
+      $root       = dirname(__DIR__, 2);
       $relBaseDir = 'uploads/tareas/' . $tareaId;
       $fullBaseDir = $root . '/public/' . $relBaseDir;
 
@@ -103,7 +87,6 @@ final class TareaDocumentoService
       $subidos = [];
       $errores = [];
 
-      // Soportar multiple: files[name][i], files[tmp_name][i], etc.
       $nombres   = $files['name'] ?? [];
       $tmpNames  = $files['tmp_name'] ?? [];
       $sizes     = $files['size'] ?? [];
@@ -127,11 +110,11 @@ final class TareaDocumentoService
             continue;
          }
 
-         $safeName = $this->sanearNombreArchivo((string)$name);
-         $ext = pathinfo($safeName, PATHINFO_EXTENSION);
+         $safeName   = $this->sanitizeFilename((string)$name);
+         $ext        = pathinfo($safeName, PATHINFO_EXTENSION);
          $uniqueName = date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . ($ext ? '.' . $ext : '');
-         $fullPath = $fullBaseDir . '/' . $uniqueName;
-         $relPath  = $relBaseDir . '/' . $uniqueName;
+         $fullPath   = $fullBaseDir . '/' . $uniqueName;
+         $relPath    = $relBaseDir . '/' . $uniqueName;
 
          if (!move_uploaded_file($tmp, $fullPath)) {
             $errores[] = [
@@ -167,12 +150,6 @@ final class TareaDocumentoService
       ];
    }
 
-   /**
-    * Descargar un archivo de evidencia (hace stream + exit)
-    *
-    * @param array<string,mixed> $user
-    * @param array<string,mixed> $scope
-    */
    public function download(int $docId, array $user, array $scope): void
    {
       $doc = $this->dRepo->findById($docId);
@@ -182,18 +159,18 @@ final class TareaDocumentoService
       }
 
       $tareaId = (int)$doc['tarea_id'];
-      $tarea = $this->tRepo->findById($tareaId);
+      $tarea   = $this->tRepo->findById($tareaId);
       if (!$tarea) {
          Response::json(['ok' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Tarea no encontrada']], 404);
          return;
       }
 
-      if (!$this->puedeVer($tarea, $user, $scope)) {
+      if (!$this->canView($tarea, $user, $scope)) {
          Response::json(['ok' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => 'No puedes descargar este documento']], 403);
          return;
       }
 
-      $root = dirname(__DIR__, 2);
+      $root    = dirname(__DIR__, 2);
       $relPath = (string)$doc['archivo_path'];
       $fullPath = $root . '/public/' . $relPath;
 
@@ -216,14 +193,7 @@ final class TareaDocumentoService
       exit;
    }
 
-   /**
-    * Eliminar un documento de evidencia
-    *
-    * @param array<string,mixed> $user
-    * @param array<string,mixed> $scope
-    * @return array<string,mixed>
-    */
-   public function eliminar(int $docId, array $user, array $scope): array
+   public function delete(int $docId, array $user, array $scope): array
    {
       $doc = $this->dRepo->findById($docId);
       if (!$doc) {
@@ -241,14 +211,13 @@ final class TareaDocumentoService
          ];
       }
 
-      if (!$this->puedeBorrar($tarea, $user, $scope)) {
+      if (!$this->canDelete($tarea, $user, $scope)) {
          return [
             'ok' => false,
             'error' => ['code' => 'FORBIDDEN', 'message' => 'No puedes eliminar este documento']
          ];
       }
 
-      // Solo permitir borrar en estado PENDIENTE
       $estado = strtoupper((string)$tarea['estado']);
       if ($estado !== 'PENDIENTE') {
          return [
@@ -260,7 +229,7 @@ final class TareaDocumentoService
          ];
       }
 
-      $root = dirname(__DIR__, 2);
+      $root    = dirname(__DIR__, 2);
       $relPath = (string)$doc['archivo_path'];
       $fullPath = $root . '/public/' . $relPath;
 
@@ -273,63 +242,28 @@ final class TareaDocumentoService
       return ['ok' => true];
    }
 
-   // ================== Helpers de permisos básicos ==================
+   // --------- helpers de permisos ---------
 
-   /**
-    * @param array<string,mixed> $tarea
-    * @param array<string,mixed> $user
-    * @param array<string,mixed> $scope
-    */
-   private function puedeVer(array $tarea, array $user, array $scope): bool
+   private function canView(array $tarea, array $user, array $scope): bool
    {
-      // Por ahora: cualquiera que ya pasó Auth + Scope y ve la tarea
-      // puede ver sus evidencias. El alcance real lo controla el ScopeMiddleware.
       return true;
    }
 
-   /**
-    * @param array<string,mixed> $tarea
-    * @param array<string,mixed> $user
-    * @param array<string,mixed> $scope
-    */
-   private function puedeSubir(array $tarea, array $user, array $scope): bool
+   private function canUpload(array $tarea, array $user, array $scope): bool
    {
       $userId = (int)($user['id'] ?? 0);
-
-      // Regla principal: solo el responsable de la tarea puede subir evidencias
-      if ($userId > 0 && (int)$tarea['responsable_id'] === $userId) {
-         return true;
-      }
-
-      // Si más adelante quieres permitir GERENCIA / DIRECCION, podrías hacer:
-      // $role = strtoupper((string)($user['role'] ?? ''));
-      // if (in_array($role, ['DIRECCION','GERENCIA'], true)) return true;
-
-      return false;
+      return $userId > 0 && (int)$tarea['responsable_id'] === $userId;
    }
 
-   /**
-    * @param array<string,mixed> $tarea
-    * @param array<string,mixed> $user
-    * @param array<string,mixed> $scope
-    */
-   private function puedeBorrar(array $tarea, array $user, array $scope): bool
+   private function canDelete(array $tarea, array $user, array $scope): bool
    {
-      // Misma lógica que subir por ahora:
       $userId = (int)($user['id'] ?? 0);
-
-      if ($userId > 0 && (int)$tarea['responsable_id'] === $userId) {
-         return true;
-      }
-
-      return false;
+      return $userId > 0 && (int)$tarea['responsable_id'] === $userId;
    }
 
-
-   private function sanearNombreArchivo(string $name): string
+   private function sanitizeFilename(string $name): string
    {
       $name = str_replace(['\\', '/'], '_', $name);
-      // opcional: limitar caracteres
       return preg_replace('/[^A-Za-z0-9_\.\- áéíóúÁÉÍÓÚñÑ]/u', '_', $name) ?: $name;
    }
 }

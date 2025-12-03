@@ -56,6 +56,7 @@ final class AuthController
             'nombre'    => $u['nombre']    ?? null,
             'roles'     => $u['roles']     ?? [],
             'permisos'  => $u['permisos']  ?? [],
+            'area_id'   => $u['area_id'] ?? null,
          ]
       ]);
    }
