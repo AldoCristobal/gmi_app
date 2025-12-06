@@ -17,15 +17,16 @@ final class AuthMiddleware
       $user = $_SESSION['user'] ?? null;
 
       if (!$user) {
-         Response::json(
+         Response::error(
+            $req,
+            401,
             [
                'ok'    => false,
                'error' => [
                   'code'    => 'UNAUTH',
                   'message' => 'No autenticado',
                ],
-            ],
-            401
+            ]
          );
          return;
       }

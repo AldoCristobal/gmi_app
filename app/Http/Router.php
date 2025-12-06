@@ -14,24 +14,104 @@ final class Router
       'DELETE' => [],
    ];
 
+   /**
+    * Pila de grupos (tipo Laravel):
+    * cada item: ['prefix' => string, 'middleware' => array]
+    */
+   private array $groupStack = [];
+
+   /**
+    * Define un grupo de rutas con prefix y/o middlewares.
+    */
+   public function group(array $options, callable $callback): void
+   {
+      $parent = end($this->groupStack) ?: ['prefix' => '', 'middleware' => []];
+
+      $prefix     = $options['prefix']     ?? '';
+      $middleware = $options['middleware'] ?? [];
+
+      $ctx = [
+         'prefix'     => rtrim($parent['prefix'], '/') . ($prefix ? '/' . ltrim($prefix, '/') : ''),
+         'middleware' => array_merge($parent['middleware'], $middleware),
+      ];
+
+      $this->groupStack[] = $ctx;
+
+      try {
+         $callback($this);
+      } finally {
+         array_pop($this->groupStack);
+      }
+   }
+
+   /**
+    * Aplica contexto de grupo (prefix + middlewares) a una ruta que se está registrando.
+    *
+    * @param string               $path
+    * @param callable|array<mixed> $handler
+    * @return array{0:string,1:callable|array}
+    */
+   private function applyGroupContext(string $path, callable|array $handler): array
+   {
+      if (empty($this->groupStack)) {
+         return [$path, $handler];
+      }
+
+      $ctx = end($this->groupStack);
+
+      // Prefix
+      if (!empty($ctx['prefix'])) {
+         $prefix = rtrim($ctx['prefix'], '/');
+
+         if ($path === '' || $path === '/') {
+            // Ruta "índice" del grupo: que quede exactamente el prefijo
+            $path = $prefix === '' ? '/' : $prefix;
+         } else {
+            $path = $prefix . '/' . ltrim($path, '/');
+         }
+      }
+
+      // Middlewares del grupo
+      if (!empty($ctx['middleware'])) {
+         if (is_array($handler)) {
+            // handler ya es [mw..., controller]
+            $handler = array_merge($ctx['middleware'], $handler);
+         } else {
+            // handler es callable simple → lo volvemos [mw..., callable]
+            $handler = array_merge($ctx['middleware'], [$handler]);
+         }
+      }
+
+      return [$path, $handler];
+   }
+
    public function get(string $path, callable|array $handler): void
    {
-      $this->routes['GET'][$path]    = $handler;
+      [$path, $handler] = $this->applyGroupContext($path, $handler);
+      $this->routes['GET'][$path] = $handler;
    }
+
    public function post(string $path, callable|array $handler): void
    {
-      $this->routes['POST'][$path]   = $handler;
+      [$path, $handler] = $this->applyGroupContext($path, $handler);
+      $this->routes['POST'][$path] = $handler;
    }
+
    public function put(string $path, callable|array $handler): void
    {
-      $this->routes['PUT'][$path]    = $handler;
+      [$path, $handler] = $this->applyGroupContext($path, $handler);
+      $this->routes['PUT'][$path] = $handler;
    }
+
    public function patch(string $path, callable|array $handler): void
    {
-      $this->routes['PATCH'][$path]  = $handler;
+      [$path, $handler] = $this->applyGroupContext($path, $handler);
+      $this->routes['PATCH'][$path] = $handler;
    }
+
    public function delete(string $path, callable|array $handler): void
    {
+      [$path, $handler] = $this->applyGroupContext($path, $handler);
       $this->routes['DELETE'][$path] = $handler;
    }
 
@@ -42,7 +122,18 @@ final class Router
       $handler = $this->routes[$method][$path] ?? null;
 
       if (!$handler) {
-         Response::json(['ok' => false, 'error' => ['code' => 'NOT_FOUND', 'path' => $path]], 404);
+         Response::error(
+            $req,
+            404,
+            [
+               'ok'    => false,
+               'error' => [
+                  'code' => 'NOT_FOUND',
+                  'path' => $path,
+                  'message' => 'Ruta no encontrada',
+               ],
+            ]
+         );
          return;
       }
 
@@ -80,7 +171,18 @@ final class Router
                   $mw($rq, $prevNext); // ejecutar; no retornar
                   return;
                }
-               Response::json(['ok' => false, 'error' => ['code' => 'MW_INVALID']], 500);
+
+               Response::error(
+                  $rq,
+                  500,
+                  [
+                     'ok'    => false,
+                     'error' => [
+                        'code'    => 'MW_INVALID',
+                        'message' => 'Middleware inválido en la ruta',
+                     ],
+                  ]
+               );
             };
          }
 
@@ -89,6 +191,16 @@ final class Router
          return;
       }
 
-      Response::json(['ok' => false, 'error' => ['code' => 'HANDLER_INVALID']], 500);
+      Response::error(
+         $req,
+         500,
+         [
+            'ok'    => false,
+            'error' => [
+               'code'    => 'HANDLER_INVALID',
+               'message' => 'Handler inválido en la ruta',
+            ],
+         ]
+      );
    }
 }

@@ -152,14 +152,14 @@
       const showItem = (tipo === 'item');
       const showExt = (tipo === 'external');
 
-      // Vista+Slug están en la misma fila (fVista.closest('.form-row'))
       const vistaRow = fVista?.closest('.form-row');
       const urlRow = fUrl?.closest('.form-row');
 
       if (vistaRow) vistaRow.style.display = showItem ? '' : 'none';
       if (urlRow) urlRow.style.display = showExt ? '' : 'none';
 
-      if (tipo === 'header' || tipo === 'divider') {
+      // Para header, divider y group: ocultar ambas cosas
+      if (tipo === 'header' || tipo === 'divider' || tipo === 'group') {
          if (vistaRow) vistaRow.style.display = 'none';
          if (urlRow) urlRow.style.display = 'none';
       }
@@ -178,7 +178,6 @@
    function getTree() { return $.ui.fancytree.getTree(treeEl); }
 
    function rebuildTreeFromFlat(flat) {
-      // flat: array con registros {id,parent_id, ...}
       const byId = new Map();
       const roots = [];
       flat.forEach(it => {
@@ -191,10 +190,9 @@
          else {
             const p = byId.get(it.parent_id);
             if (p) p.children.push(n);
-            else roots.push(n); // si parent roto, súbelo como raíz
+            else roots.push(n);
          }
       });
-      // ordenar por orden en cada nivel
       function sortChildren(nodeArr) {
          nodeArr.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || String(a.etiqueta).localeCompare(b.etiqueta));
          nodeArr.forEach(n => n.children && sortChildren(n.children));
@@ -204,11 +202,36 @@
    }
 
    function renderNodeTitle(d) {
-      const icon = d.icono ? `<i class="${d.icono} mr-1"></i>` : `<i class="far fa-circle mr-1"></i>`;
-      const badge = d.badge_text ? `<span class="badge badge-${d.badge_variant || 'info'} ml-2">${d.badge_text}</span>` : '';
+      // Selección automática del icono si no se especificó uno
+      let iconClass = d.icono;
+
+      if (!iconClass || !iconClass.trim()) {
+         switch (d.tipo) {
+            case 'group':
+               iconClass = 'fas fa-folder';
+               break;
+            case 'header':
+               iconClass = 'fas fa-ellipsis-h';
+               break;
+            case 'divider':
+               // Divider no muestra icono
+               return `<span class="text-muted">──────────</span>`;
+            default:
+               iconClass = 'far fa-circle';
+               break;
+         }
+      }
+
+      const icon = `<i class="${iconClass} mr-1"></i>`;
+      const badge = d.badge_text
+         ? `<span class="badge badge-${d.badge_variant || 'info'} ml-2">${d.badge_text}</span>`
+         : '';
+
       const dim = Number(d.visible ?? 1) ? '' : ' <span class="text-muted">(oculto)</span>';
+
       return `${icon}<span>${escapeHtml(d.etiqueta || '(sin etiqueta)')}</span>${badge}${dim}`;
    }
+
 
    function escapeHtml(s) {
       return (s || '').replace(/[&<>"']/g, (m) => ({
@@ -255,13 +278,10 @@
          const r = await Api.get(API.list(ns));
          let data = r.data || [];
 
-         // Acepta nested (con children) o flat
          let source;
          if (Array.isArray(data) && data.length && data[0] && Array.isArray(data[0].children)) {
-            // nested
             source = data.map(n => mapNodeForTree(n));
          } else {
-            // flat
             source = rebuildTreeFromFlat(data);
          }
 
@@ -285,13 +305,12 @@
                },
                dnd5: {
                   preventVoidMoves: true,
-                  preventRecursive: true, // <- nombre correcto de la opción
+                  preventRecursive: true,
                   dragStart: (node, data) => true,
                   dragEnter: (node, data) => {
                      const targetType = node.data?.tipo || 'item';
-                     // No permitir soltar "over" sobre divisores: solo before/after
                      if (targetType === 'divider') return ['before', 'after'];
-                     return true; // para item/external/header se permiten before/after/over
+                     return true;
                   },
                   dragDrop: (node, data) => {
                      data.otherNode.moveTo(node, data.hitMode);
@@ -312,7 +331,6 @@
             getTree().reload(source);
          }
 
-         // Expandir un poco y seleccionar
          const tree = getTree();
          if (tree) {
             tree.expandAll(true);
@@ -352,7 +370,8 @@
          const payload = {
             parent_id: parentId,
             etiqueta: 'Nuevo ítem',
-            tipo: 'header',
+            // 👉 ahora por defecto creamos como contenedor "group"
+            tipo: 'group',
             namespace: fNamespace.value || 'sidebar',
             visible: 1
          };
@@ -396,14 +415,24 @@
    // ------- Guardar detalle -------
    function validateForm(data) {
       if (!data.etiqueta) return 'La etiqueta es obligatoria';
+
       if (data.tipo === 'item') {
          if (!data.vista) return 'Para tipo "item", la vista es obligatoria';
          if (data.url_externa) return 'No mezcles vista con URL externa';
       }
+
       if (data.tipo === 'external') {
          if (!data.url_externa) return 'Para tipo "external", la URL es obligatoria';
          if (data.vista) return 'No mezcles URL externa con vista';
       }
+
+      // 👉 Para "group": no debe llevar vista ni URL
+      if (data.tipo === 'group') {
+         if (data.vista) return 'Los elementos de tipo "group" no deben tener vista';
+         if (data.url_externa) return 'Los elementos de tipo "group" no deben tener URL externa';
+      }
+
+      // header y divider no tienen restricciones extra aquí
       return null;
    }
 
@@ -412,6 +441,7 @@
       if (!node) return toast.error('Selecciona un ítem');
       const d = readForm();
       d.id = Number(node.data.id);
+
       if (!d.slug) d.slug = slugify(d.etiqueta);
 
       const err = validateForm(d);
@@ -497,7 +527,6 @@
    btnSave?.addEventListener('click', saveDetail);
    btnReset?.addEventListener('click', resetDetail);
 
-   // Autogenerar slug si está vacío mientras escribes la etiqueta
    fEtiqueta?.addEventListener('input', () => {
       if (!fSlug.value.trim()) fSlug.value = slugify(fEtiqueta.value);
    });
@@ -505,7 +534,6 @@
    // ------- Primera carga -------
    loadMenu();
 
-   // Aplicar gating de permisos en esta vista
    if (window.__applyGates) {
       window.__applyGates(document);
    }

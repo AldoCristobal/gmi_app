@@ -13,11 +13,23 @@ final class RbacMiddleware
 
    public function handle(Request $req, callable $next)
    {
-      $user = $req->attr('user');
+      $user  = $req->attr('user');
       $perms = $user['permisos'] ?? [];
       foreach ($this->requiredPerms as $p) {
          if (!in_array($p, $perms, true)) {
-            return Response::json(['ok' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => "Falta permiso $p"]], 403);
+
+            Response::error(
+               $req,
+               403,
+               [
+                  'ok'    => false,
+                  'error' => [
+                     'code'    => 'FORBIDDEN',
+                     'message' => "Falta permiso $p",
+                  ],
+               ]
+            );
+            return;
          }
       }
       return $next($req);

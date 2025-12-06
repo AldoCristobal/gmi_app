@@ -55,6 +55,7 @@
                         <option value="external">Enlace externo</option>
                         <option value="header">Header</option>
                         <option value="divider">Divider</option>
+                        <option value="group">Grupo / Contenedor</option>
                      </select>
                   </div>
                </div>
@@ -126,7 +127,9 @@
             </div>
             <div class="card-footer d-flex">
                <button id="m-reset" class="btn btn-light mr-2">Deshacer</button>
-               <button id="m-save" data-perm="admin.menu.editar" data-perm-mode="disable" class="btn btn-primary ml-auto"><i class="fas fa-save"></i> Guardar</button>
+               <button id="m-save" data-perm="admin.menu.editar" data-perm-mode="disable" class="btn btn-primary ml-auto">
+                  <i class="fas fa-save"></i> Guardar
+               </button>
             </div>
          </div>
       </div>

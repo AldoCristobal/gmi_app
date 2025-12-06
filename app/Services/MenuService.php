@@ -86,11 +86,11 @@ final class MenuService
       $d['id'] = $id;
       $res     = $this->actualizar($d);
 
+      if (!($res['ok'] ?? false) && ($res['error']['code'] ?? '') === 'NOT_FOUND') {
+         return false;
+      }
+
       if (!($res['ok'] ?? false)) {
-         $code = $res['error']['code'] ?? '';
-         if ($code === 'NOT_FOUND') {
-            return false;
-         }
          $msg = $res['error']['message'] ?? 'Error al actualizar menú';
          throw new RuntimeException($msg);
       }
@@ -106,11 +106,11 @@ final class MenuService
    {
       $res = $this->eliminar($id, 'cascade');
 
+      if (!($res['ok'] ?? false) && ($res['error']['code'] ?? '') === 'NOT_FOUND') {
+         return false;
+      }
+
       if (!($res['ok'] ?? false)) {
-         $code = $res['error']['code'] ?? '';
-         if ($code === 'NOT_FOUND') {
-            return false;
-         }
          $msg = $res['error']['message'] ?? 'Error al eliminar menú';
          throw new RuntimeException($msg);
       }
@@ -296,13 +296,17 @@ final class MenuService
    private function validateTypeFields(array $d): void
    {
       $tipo = $d['tipo'] ?? 'item';
-      if (!in_array($tipo, ['item', 'external', 'header', 'divider'], true)) {
+
+      // 👉 ahora incluimos 'group' como tipo válido
+      if (!in_array($tipo, ['item', 'external', 'header', 'divider', 'group'], true)) {
          throw new InvalidArgumentException('Tipo inválido');
       }
+
       if (empty(trim($d['etiqueta'] ?? ''))) {
          throw new InvalidArgumentException('La etiqueta es obligatoria');
       }
 
+      // item: vista obligatoria, sin URL externa
       if ($tipo === 'item') {
          if (empty(trim($d['vista'] ?? ''))) {
             throw new InvalidArgumentException('Para tipo "item", la vista es obligatoria');
@@ -312,6 +316,7 @@ final class MenuService
          }
       }
 
+      // external: URL obligatoria, sin vista
       if ($tipo === 'external') {
          if (empty(trim($d['url_externa'] ?? ''))) {
             throw new InvalidArgumentException('Para tipo "external", la URL es obligatoria');
@@ -323,6 +328,18 @@ final class MenuService
             throw new InvalidArgumentException('Target inválido');
          }
       }
+
+      // group: contenedor puro, sin vista ni URL
+      if ($tipo === 'group') {
+         if (!empty(trim($d['vista'] ?? ''))) {
+            throw new InvalidArgumentException('Los elementos de tipo "group" no deben tener vista');
+         }
+         if (!empty(trim($d['url_externa'] ?? ''))) {
+            throw new InvalidArgumentException('Los elementos de tipo "group" no deben tener URL externa');
+         }
+      }
+
+      // header/divider: por ahora ninguna validación extra (pero también deberían ir sin vista/URL)
    }
 
    private function detectCycle(array $changes): bool
