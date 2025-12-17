@@ -75,9 +75,11 @@ final class UserRepository
 
       $q = $filters['q'] ?? null;
       if ($q !== null && $q !== '') {
-         $where[] = '(u.nombre LIKE :q OR u.email LIKE :q)';
-         $params[':q'] = '%' . $q . '%';
+         $where[] = '(u.nombre LIKE :q1 OR u.email LIKE :q2)';
+         $params[':q1'] = '%' . $q . '%';
+         $params[':q2'] = '%' . $q . '%';
       }
+
 
       if (array_key_exists('activo', $filters)) {
          $activo = (int) $filters['activo'];
@@ -271,4 +273,30 @@ final class UserRepository
       return $vista !== false ? (string)$vista : null;
    }
 
+   public function listJefesUsuarios(array $roleIds = [2, 4, 11]): array
+   {
+      // Normaliza roles
+      $roleIds = array_values(array_unique(array_filter(array_map('intval', $roleIds), fn($x) => $x > 0)));
+      if (!$roleIds) $roleIds = [2, 4, 11];
+
+      // IN dinámico con placeholders seguros
+      $in = implode(',', array_fill(0, count($roleIds), '?'));
+
+      $sql = "
+      SELECT DISTINCT u.id, u.nombre
+      FROM usuario u
+      INNER JOIN usuario_rol ur ON ur.usuario_id = u.id
+      WHERE u.activo = 1
+        AND ur.rol_id IN ($in)
+      ORDER BY u.nombre ASC
+   ";
+
+      $st = $this->db->prepare($sql);
+      foreach ($roleIds as $i => $rid) {
+         $st->bindValue($i + 1, $rid, PDO::PARAM_INT);
+      }
+      $st->execute();
+
+      return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+   }
 }

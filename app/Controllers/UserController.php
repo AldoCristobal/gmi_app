@@ -15,7 +15,8 @@ final class UserController
    /** GET /api/v1/admin/usuarios?page=&size=&q=&activo= */
    public function index(Request $req): void
    {
-      $query = $req->query ?? [];
+      // OJO: tu Request trae querystring en $req->get (no existe $req->query)
+      $query = $req->get ?? [];
 
       $out = $this->svc->list($query);
 
@@ -74,7 +75,8 @@ final class UserController
    /** DELETE /api/v1/admin/usuarios?id=123 */
    public function destroy(Request $req): void
    {
-      $id = (int) (($req->query['id'] ?? 0));
+      // OJO: querystring está en $req->get
+      $id = (int) (($req->get['id'] ?? 0));
 
       if ($id <= 0) {
          Response::json([

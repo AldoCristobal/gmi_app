@@ -106,7 +106,7 @@
       async function loadCatalogs() {
          [_areas, _jefes, _roles] = await Promise.all([
             fetchCatalog('/api/v1/catalogos/areas'),
-            fetchCatalog('/api/v1/catalogos/jefes'),
+            fetchCatalog('/api/v1/catalogos/jefes-usuarios'),
             fetchCatalog('/api/v1/catalogos/roles'),
          ]);
          fillSelect(fArea, _areas, 'id', 'nombre', { includeEmpty: true, emptyText: 'Seleccione…' });
@@ -176,9 +176,10 @@
          const selected = getSelectedRow();
          const canPermLocal = (p) => window.__canPerm ? window.__canPerm(p) : Promise.resolve(false);
 
-         const canCreate = await canPermLocal('admin.users.crear');
-         const canEdit = await canPermLocal('admin.users.editar');
-         const canDelete = await canPermLocal('admin.users.borrar');
+         // FIX: permisos reales del backend
+         const canCreate = await canPermLocal('admin.usuarios.crear');
+         const canEdit = await canPermLocal('admin.usuarios.editar');
+         const canDelete = await canPermLocal('admin.usuarios.borrar');
 
          if (selected) {
             btnNew?.classList.remove('btn-success');
@@ -303,20 +304,16 @@
       async function openEdit(row) {
          if (!row) return;
          await openModal(false, row);
-
-         if (USE_DETAIL_FALLBACK) {
-            // aquí podrías hacer GET detalle en el futuro
-         }
       }
 
       async function openEditSelected() {
          const selected = getSelectedRow();
          if (selected) {
-            const ok = await canPerm('admin.users.editar');
+            const ok = await canPerm('admin.usuarios.editar');
             if (!ok) { toast('error', 'No tienes permiso para editar'); return; }
             await openEdit(selected);
          } else {
-            const ok = await canPerm('admin.users.crear');
+            const ok = await canPerm('admin.usuarios.crear');
             if (!ok) { toast('error', 'No tienes permiso para crear'); return; }
             await openModal(true);
          }
@@ -361,34 +358,12 @@
          }
       }
 
-      async function resetPwd(row) {
-         const pwd = prompt('Nuevo password (mín. 6 caracteres):');
-         if (!pwd) return;
-         if (pwd.length < 6) {
-            toast('warning', 'El password debe tener al menos 6 caracteres');
-            return;
-         }
-         try {
-            AppLoader?.show('Actualizando password…');
-            const j = await Api.patch('/api/v1/admin/usuarios/password', {
-               id: row.id,
-               password: pwd
-            });
-            if (j?.ok) toast('success', 'Password actualizado');
-            else toast('warning', 'No se pudo actualizar el password');
-         } catch (err) {
-            handleApiError(err, 'Error al actualizar password');
-         } finally {
-            AppLoader?.hide();
-         }
-      }
-
       async function delUser(row) {
          if (!row) {
             toast('warning', 'Selecciona una fila para eliminar');
             return;
          }
-         const canDel = await canPerm('admin.users.borrar');
+         const canDel = await canPerm('admin.usuarios.borrar');
          if (!canDel) {
             toast('error', 'No tienes permiso para eliminar');
             return;
@@ -429,7 +404,7 @@
             AppLoader?.show('Guardando…');
 
             if (!payload.id) {
-               const canCreate = await canPerm('admin.users.crear');
+               const canCreate = await canPerm('admin.usuarios.crear');
                if (!canCreate) {
                   toast('error', 'No tienes permiso para crear');
                   return;
@@ -450,7 +425,7 @@
                   toast('warning', 'No se pudo crear el usuario');
                }
             } else {
-               const canEdit = await canPerm('admin.users.editar');
+               const canEdit = await canPerm('admin.usuarios.editar');
                if (!canEdit) {
                   toast('error', 'No tienes permiso para editar');
                   return;
@@ -499,8 +474,7 @@
       });
 
       fQ?.addEventListener('input', () => {
-         // quick filter local + si quieres recargar al vuelo, puedes también llamar loadData()
-         applyQuickFilter();
+         //applyQuickFilter();
       });
 
       fActivo?.addEventListener('change', () => {

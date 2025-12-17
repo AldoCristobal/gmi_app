@@ -160,4 +160,13 @@ final class CatalogosController
 
       Response::json(['ok' => true, 'data' => $rows]);
    }
+
+   public function jefesUsuarios(Request $req): void
+   {
+      // fijo: Dirección(4), Gerencia(2), Supervisor(11)
+      // si algún día quieres permitir override por query ?roles=2,4,11, lo hacemos, pero por ahora simple.
+      $rows = $this->userRepo->listJefesUsuarios([2, 4, 11]);
+
+      Response::json(['ok' => true, 'data' => $rows], 200);
+   }
 }

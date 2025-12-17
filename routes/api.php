@@ -134,6 +134,11 @@ $router->group(['prefix' => '/api/v1'], function ($r) use (
       $r->get('/obligaciones', [
          [$cat, 'obligaciones'],
       ]);
+
+      // /api/v1/catalogos/jefes-usuarios  (Auth, SIN Scope)
+      $r->get('/jefes-usuarios', [
+         [$cat, 'jefesUsuarios'],
+      ]);
    });
 
    /**
